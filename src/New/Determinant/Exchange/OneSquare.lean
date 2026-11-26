@@ -13,12 +13,9 @@ on theta lifts of forms from `U₁` to `U₂`: its kernels are products of kerne
 * `New.Exchange.pairTransposedLift_comp_pairLift_mul`,
   `New.Exchange.pairLift_comp_pairTransposedLift_mul`: the path up to `A` and down, and the path
   down to `A'` and up, transform by the tame character.
-* `New.Exchange.IsSquare`: the conditions on the four pairs of a square.
-* `New.Exchange.exists_sum_pairLift_comp_pairTransposedLift_eq_smul`: for four pairs with their own
-  splitting characters, the two paths agree on matched functions up to the factor `κ / c`, where `κ`
-  may be zero.
-* `New.Exchange.one_square_identity_of_isEdgeFamily`: the case of two families of characters indexed
-  by finite types, in the form of the relation `New.Exchange.SquareLaw`.
+* `New.Exchange.one_square_identity_of_isEdgeFamily`: for two edge families of characters indexed by
+  finite types, the two paths agree on matched functions up to the factor `κ / c`, where `κ` may be
+  zero, in the form of the relation `New.Exchange.SquareLaw`.
 
 Notions from other files:
 * `New.modDatum S T 𝔪 Ψ v`: the theta datum on `Hom(S, T)` with real part the Fock vector `v`, given
@@ -677,288 +674,23 @@ lemma ne_zero_of_norm_sq_eq {c : ℂ} {r : ℝ} (h : ‖c‖ ^ 2 = r) (hr : r �
   rintro rfl
   exact hr (by simpa using h.symm)
 
-variable (e e' e₁ e₂ a₁ a₂ b₁ b₂ a₁' a₂' b₁' b₂' P₁ P₂ P₁' P₂') in
-/-- A family of squares with the same real data. The corners are spaces `U₁`, `U₂`, `A`, `A'` with
-signs `s₁`, `s₂`, `s'`, `s`, and `W = U₁ ⊕ U₂`. The pairs `(U₁, A)`, `(U₂, A)`, `(A', U₁)`,
-`(A', U₂)` carry the characters `(a₁, b₁)`, `(a₂, b₂)`, `(b₁', a₁')`, `(b₂', a₂')`, which depend on
-the member `i` of the family, and the polynomials `P₁`, `P₂`, `P₁'`, `P₂'`. For a character `α` of
-`[U(1)]`, `α.baseChange` is the Hecke character `x ↦ α (x / x̄)`, and the splitting character of a
-space of rank `m` that carries `α` is `α.spaceChar m = α.baseChange * υ⁻¹ ^ m`. -/
-structure IsSquare (t : ℕ) (μ : InfinitePlace E → ℤ) (𝔪 : I → Modulus E) (ν : I → AutChar E)
-    (χ : ∀ i : I, MulChar (𝔪 i).ResidueRing ℂ) : Prop where
-  /-- `W` has as many negative signs as `A` and `A'` together. -/
-  negCount_eq : negCount (s₁ ⊕ᵥ s₂) = negCount s' + negCount s
-  /-- The ranks of `A` and `A'` differ by `2 t`. -/
-  card_eq : card n' = card n + 2 * t
-  /-- Half the rank of `W` exceeds the number of its negative signs. -/
-  negCount_lt_half : 2 * negCount (s₁ ⊕ᵥ s₂) + 2 ≤ card (n₁ ⊕ n₂)
-  /-- The weights are at least this excess. -/
-  card_le_weight (τ : InfinitePlace E) : card (n₁ ⊕ n₂) ≤ 2 * μ τ + 2 * negCount (s₁ ⊕ᵥ s₂)
-  /-- The character `ν i` of `[U(1)]` is tame of weight `μ` for `(𝔪 i, χ i)`. -/
-  tame (i : I) : IsTameFor (𝔪 i) (ν i) μ (χ i)
-  /-- The pair `(U₁, A)` is an edge `e₁ → e`. -/
-  edge₁ : IsPairEdge a₁ b₁ e₁ e P₁
-  /-- The pair `(U₂, A)` is an edge `ē₂ → ē`. -/
-  edge₂ : IsPairEdge a₂ b₂ (star e₂) (star e) P₂
-  /-- The pair `(A', U₁)` is an edge `ē' → ē₁`. -/
-  edge₁' : IsPairEdge b₁' a₁' (star e') (star e₁) P₁'
-  /-- The pair `(A', U₂)` is an edge `e' → e₂`. -/
-  edge₂' : IsPairEdge b₂' a₂' e' e₂ P₂'
-  /-- On the side of `A`, the splitting characters of `U₁`, `U₂` multiply to `ν̃⁻¹`, the inverse
-  base change of `ν`. -/
-  spaceChar_mul_up (i : I) : (a₁ i).spaceChar (card n₁) * (a₂ i).spaceChar (card n₂) =
-    (ν i).baseChange⁻¹
-  /-- So do those on the side of `A'`. -/
-  spaceChar_mul_down (i : I) :
-    (a₁' i).spaceChar (card n₁) * (a₂' i).spaceChar (card n₂) = (ν i).baseChange⁻¹
-  /-- At `U₁`, the splitting characters of `A`, `A'` multiply to `ν̃⁻¹`. -/
-  spaceChar_mul_first (i : I) : (b₁ i).spaceChar (card n') * (b₁' i).spaceChar (card n) =
-    (ν i).baseChange⁻¹
-  /-- So do those at `U₂`. -/
-  spaceChar_mul_second (i : I) :
-    (b₂ i).spaceChar (card n') * (b₂' i).spaceChar (card n) = (ν i).baseChange⁻¹
-
 end Edges
 
-/-- On matched functions, a transposed lift followed by a lift is a multiple, possibly zero, of a
-lift followed by a transposed lift.
-
-The family satisfies `IsSquare`: the four pairs are edges; `ν i` is tame for `𝔪 i ≠ 1`: weight `μ`
-at infinity, tame part nontrivial exactly at the places dividing `𝔪 i`, defining `χ i` on the
-residue ring; `card n' = card n + 2 t`; the number `N` of negative signs of `W = U₁ ⊕ U₂` is that of
-`A` and `A'` together, with `2 N + 2 ≤ card (n₁ ⊕ n₂) ≤ 2 μ τ + 2 N`; the splitting characters
-`x ↦ α (x / x̄) * υ x ^ (-m)` of spaces of rank `m` with character `α`, `υ` being the splitting
-character of the Weil data, multiply in pairs to the inverse base change of `ν i`. Let `σ` order the
-index set of `W` as that of `A'` followed by that of `A`. Let `Θ i x` be the lift from `U₁` to `A`
-followed by the transposed lift to `U₂`, and `Θ' i y` the transposed lift to `A'` followed by the
-lift to `U₂`, the data modulo `𝔪 i` being the indicator functions of the blocks of `x`, `y`.
-
-There are `C > 0` and `κ`, possibly zero, and for each `i` a number `c` with
-`‖c‖ ^ 2 = C * lValueProd (𝔪 i).places (ν i) t ≠ 0`, such that
-`∑ Ψ' y • Θ' i y = (κ / c) • ∑ Ψ x • Θ i x` for all matched functions `Ψ`, `Ψ'` of matrices modulo
-`𝔪 i`. Here `lValueProd S ν t = ∏_{w ∈ S} q_w ^ (t ^ 2) ∏_{1 ≤ z ≤ t} |L^S(z, ν)| ^ 2`, with `q_w`
-the residue cardinality and `L^S(z, ν)` the Euler product of the base change of `ν` outside
-`S ∪ S̄`. Matched over the whole residue ring (`⊤`) means: as `k` runs over the invertible matrices
-indexed by `n₁ ⊕ n₂`, `Ψ` vanishes off the blocks `x` of rows `n'` of `k⁻¹`, `Ψ'` vanishes off the
-blocks `y` of columns `n` of `k`, and `Ψ x = χ i (det k) * Ψ' y` for the two blocks of one `k`. -/
-theorem exists_sum_pairLift_comp_pairTransposedLift_eq_smul
-    (A' : Space E n s) (A : Space E n' s') (U₁ : Space E n₁ s₁) (U₂ : Space E n₂ s₂)
-    {I : Type*} {e : GInf E s' → ℂ} {e' : GInf E s → ℂ} {e₁ : GInf E s₁ → ℂ} {e₂ : GInf E s₂ → ℂ}
-    {a₁ a₂ b₁ b₂ a₁' a₂' b₁' b₂' : I → AutChar E}
-    {P₁ : MvPolynomial (InfinitePlace E × n' × n₁) ℂ}
-    {P₂ : MvPolynomial (InfinitePlace E × n' × n₂) ℂ}
-    {P₁' : MvPolynomial (InfinitePlace E × n₁ × n) ℂ}
-    {P₂' : MvPolynomial (InfinitePlace E × n₂ × n) ℂ} (σ : n ⊕ n' ≃ n₁ ⊕ n₂) {t : ℕ}
-    {μ : InfinitePlace E → ℤ} {𝔪 : I → Modulus E} {ν : I → AutChar E}
-    {χ : ∀ i : I, MulChar (𝔪 i).ResidueRing ℂ}
-    (h_square : IsSquare e e' e₁ e₂ a₁ a₂ b₁ b₂ a₁' a₂' b₁' b₂' P₁ P₂ P₁' P₂' t μ 𝔪 ν χ) :
-    let Θ (i : I) (x : Matrix n' (n₁ ⊕ n₂) (𝔪 i).ResidueRing) : U₁.Form e₁ →ₗ[ℂ] U₂.Form e₂ :=
-      pairTransposedLift U₂ A (a₂ i) (b₂ i) P₂ (Pi.single x.toCols₂ 1) e e₂ ∘ₗ
-        pairLift U₁ A (a₁ i) (b₁ i) P₁ (Pi.single x.toCols₁ 1) e₁ e
-    let Θ' (i : I) (y : Matrix (n₁ ⊕ n₂) n (𝔪 i).ResidueRing) : U₁.Form e₁ →ₗ[ℂ] U₂.Form e₂ :=
-      pairLift A' U₂ (b₂' i) (a₂' i) P₂' (Pi.single y.toRows₂ 1) e' e₂ ∘ₗ
-        pairTransposedLift A' U₁ (b₁' i) (a₁' i) P₁' (Pi.single y.toRows₁ 1) e₁ e'
-    ∃ C : ℝ, 0 < C ∧ ∃ κ : ℂ, ∀ i : I, ∃ c : ℂ,
-      ‖c‖ ^ 2 = C * lValueProd (𝔪 i).places (ν i) t ∧
-      C * lValueProd (𝔪 i).places (ν i) t ≠ 0 ∧
-      ∀ (Ψ : Matrix n' (n₁ ⊕ n₂) (𝔪 i).ResidueRing → ℂ)
-        (Ψ' : Matrix (n₁ ⊕ n₂) n (𝔪 i).ResidueRing → ℂ),
-        AreMatched ⊤ σ (χ i) Ψ Ψ' →
-          ∑ y : Matrix (n₁ ⊕ n₂) n (𝔪 i).ResidueRing, Ψ' y • Θ' i y =
-            (κ / c) • ∑ x : Matrix n' (n₁ ⊕ n₂) (𝔪 i).ResidueRing, Ψ x • Θ i x := by
-  intro Θ Θ'
-  obtain ⟨h_signs, h_rank, h_few_neg, hμ, h_tame, h₁, h₂, h₁', h₂', ha, ha', hb₁, hb₂⟩ := h_square
-  -- All four products of characters of `[U(1)]` are the character `rankTwist ν⁻¹` of `W`.
-  have h_card : card (n₁ ⊕ n₂) = card n' + card n := by simp [← card_congr σ, add_comm]
-  have h_even : 2 ∣ card (n₁ ⊕ n₂) := ⟨card n + t, by omega⟩
-  replace ha (i : I) : a₁ i * a₂ i = rankTwist (ν i)⁻¹ (n₁ ⊕ n₂) :=
-    (spaceChar_mul_spaceChar_eq_iff card_sum h_even).1 (ha i)
-  replace ha' (i : I) : a₁' i * a₂' i = rankTwist (ν i)⁻¹ (n₁ ⊕ n₂) :=
-    (spaceChar_mul_spaceChar_eq_iff card_sum h_even).1 (ha' i)
-  have hb (i : I) : b₁ i * b₁' i = b₂ i * b₂' i := by
-    rw [(spaceChar_mul_spaceChar_eq_iff h_card h_even).1 (hb₁ i),
-      (spaceChar_mul_spaceChar_eq_iff h_card h_even).1 (hb₂ i)]
-  have h𝔪 (i : I) : Nonempty (𝔪 i).places := by
-    obtain ⟨h_places, -⟩ := h_tame i
-    exact h_places
-  -- One character `ν₀` relates both pairs: `b₂ * ν₀ = b₁` on `A` and `b₁' * ν₀ = b₂'` on `A'`.
-  let ν₀ (i : I) : AutChar E := b₁ i / b₂ i
-  have hν₀ (i : I) : b₂ i * ν₀ i = b₁ i := mul_div_cancel (b₂ i) (b₁ i)
-  have hν₀' (i : I) : b₁' i * ν₀ i = b₂' i := by
-    rw [← mul_div_assoc, mul_comm, hb, mul_div_cancel_left]
-  -- Apply the exchange identity to the Fock vector `v` of the product of `P₁'` and `P₂'`.
-  let v : PairFock E s (s₁ ⊕ᵥ s₂) :=
-    polyVector _ (renameRowsCols Sum.inl id P₁' * renameRowsCols Sum.inr id P₂')
-  have hv : IsSchwartzVector v := fun N ↦ fockMoment_polyVector_ne_top N _
-  obtain ⟨C, hC, w, hw, h_exch⟩ :=
-    exchange_identity (U₁.sum U₂) A A' σ h_signs h_rank h_few_neg hμ hv
-  obtain ⟨κ, hκ⟩ := exists_integral_upIntegrand_eq_mul_integral_lift A U₁ U₂ h₁ h₂ hν₀ h𝔪 hw
-  refine ⟨C, hC, κ, fun i ↦ ?_⟩
-  obtain ⟨c, h_size, h_ne, h_exch_i⟩ := h_exch (𝔪 i) (ν i) (χ i) (h_tame i)
-  refine ⟨c, h_size, h_ne, fun Ψ Ψ' h_part ↦ ?_⟩
-  have hc : c ≠ 0 := ne_zero_of_norm_sq_eq h_size h_ne
-  -- Forms are determined by their pairings with the forms `f₂ = conj z` of type `ē₂`.
-  refine LinearMap.ext fun f₁ ↦ ext_inner_left ℂ fun z ↦ ?_
-  let f₂ : U₂.Form (star e₂) := conjForm rfl z
-  have hf₁ : f₁.val ∈ U₁.rapidFunctions := f₁.prop.mem_rapidFunctions h₁.isCuspKernel
-  have hf₂ : f₂.val ∈ U₂.rapidFunctions := f₂.prop.mem_rapidFunctions h₂.isCuspKernel
-  have h_inner (L : U₂.Form e₂) : inner ℂ z L = ∫ g, f₂ g * L g ∂U₂.quotMeasure := rfl
-  let μU : Measure (G E s₁ × G E s₂) := U₁.quotMeasure.prod U₂.quotMeasure
-  let F (x : Matrix n' (n₁ ⊕ n₂) (𝔪 i).ResidueRing) : (G E s₁ × G E s₂) × G E s' → ℂ :=
-    upIntegrand A U₁ U₂ (ν₀ i) (a₁ i * a₂ i) (b₁ i) f₁ f₂ x w
-  let F' (y : Matrix (n₁ ⊕ n₂) n (𝔪 i).ResidueRing) : (G E s₁ × G E s₂) × G E s → ℂ :=
-    downIntegrand A' U₁ U₂ (ν₀ i) (a₁' i * a₂' i) (b₁' i) f₁ f₂ y v
-  -- The exchange identity at `g₁ ⊕ g₂`, expanded in point data and multiplied by
-  -- `f₁ g₁ * f₂ g₂ * ν₀ (det g₂)`.
-  have h_exch_at (g : G E s₁ × G E s₂) : ∫ h, ∑ x, Ψ x • F x (g, h) ∂A.quotMeasure =
-      c * ∫ h, ∑ y, Ψ' y • F' y (g, h) ∂A'.quotMeasure := by
-    have h_theta : thetaIntegral (U₁.sum U₂) A (rankTwist (ν i)⁻¹ (n₁ ⊕ n₂)) (b₁ i)
-          (modDatum (U₁.sum U₂) A (𝔪 i) Ψ w) (G.sum g) =
-        c * ∫ h, pairTheta A' (U₁.sum U₂) (b₁' i) (rankTwist (ν i)⁻¹ (n₁ ⊕ n₂))
-          (modDatum A' (U₁.sum U₂) (𝔪 i) Ψ' v) (h, G.sum g) ∂A'.quotMeasure :=
-      h_exch_i (b₁ i) (b₁' i) (hb₁ i) Ψ Ψ' h_part (G.sum g)
-    simp only [F, F', ha, ha']
-    exact integral_sum_upIntegrand_eq_mul A' A U₁ U₂ (ν₀ i) h_theta
-  -- The side of `A`: `Ψ` lives on onto matrices.
-  have h_up : ∫ g, ∫ h, ∑ x, Ψ x • F x (g, h) ∂A.quotMeasure ∂μU =
-      ∑ x, Ψ x • (κ * inner ℂ z (Θ i x f₁)) := by
-    refine integral_integral_sum_eq (fun x hx ↦ ?_) fun x hx ↦ ?_
-    · exact integrable_upIntegrand A U₁ U₂ (ν₀ i) (a₁ i * a₂ i) (b₁ i) (h𝔪 i) hf₁ hf₂
-        (hasLeftInv_transpose_of_areMatched h_part hx) hw
-    · rw [h_inner]
-      exact hκ i x (hasLeftInv_transpose_of_areMatched h_part hx) f₁ f₂
-  -- The side of `A'`: `Ψ'` lives on left invertible matrices.
-  have h_down : ∫ g, ∫ h, ∑ y, Ψ' y • F' y (g, h) ∂A'.quotMeasure ∂μU =
-      ∑ y, Ψ' y • inner ℂ z (Θ' i y f₁) := by
-    simp only [h_inner]
-    exact integral_integral_sum_downIntegrand A' U₁ U₂ h₁' h₂' i (hν₀' i) (h𝔪 i)
-      (fun y hy ↦ hasLeftInv_of_areMatched h_part hy) hf₁ hf₂
-  have h_scalar : κ * ∑ x, Ψ x * inner ℂ z (Θ i x f₁) =
-      c * ∑ y, Ψ' y * inner ℂ z (Θ' i y f₁) := by
-    -- integrate `h_exch_at` over `U₁ × U₂`
-    have h_eq : ∑ x, Ψ x • (κ * inner ℂ z (Θ i x f₁)) =
-        c * ∑ y, Ψ' y • inner ℂ z (Θ' i y f₁) := by
-      rw [← h_up, ← h_down, ← integral_const_mul]
-      exact integral_congr_ae (.of_forall h_exch_at)
-    simpa only [smul_eq_mul, mul_left_comm (Ψ _), ← Finset.mul_sum] using h_eq
-  calc
-    inner ℂ z ((∑ y, Ψ' y • Θ' i y) f₁) = ∑ y, Ψ' y * inner ℂ z (Θ' i y f₁) := by
-      simp
-    _ = κ / c * ∑ x, Ψ x * inner ℂ z (Θ i x f₁) := by
-      rw [div_mul_eq_mul_div, h_scalar, mul_div_cancel_left₀ _ hc]
-    _ = inner ℂ z (((κ / c) • ∑ x, Ψ x • Θ i x) f₁) := by simp
-
-/-- One square: two ways to lift forms from `U₁` to `U₂`, through `A` or through `A'`, transform by
-the same character and agree on matched functions up to a constant.
-
-Let `E` be a CM field with Weil data, which fix a splitting Hecke character `υ` of `E`. Let `A'`,
-`A`, `U₁`, `U₂` be hermitian spaces over `E` with index sets `n`, `n'`, `n₁`, `n₂` and signs `s`,
-`s'`, `s₁`, `s₂` at the infinite places (`A'` goes with the unprimed letters). Let `σ` order the
-index set of `W = U₁ ⊕ U₂` as `n` followed by `n'`. The types `e'`, `e`, `e₁`, `e₂` are functions on
-the real unitary groups (`GInf`) of the four spaces; a type prescribes the behavior of a form at the
-infinite places, and `U₁.Form e₁` is the space of forms of type `e₁` on `U₁`. For `i` in a set `I`,
-the pairs `(U₁, A)`, `(U₂, A)`, `(A', U₁)`, `(A', U₂)` carry the characters `(a₁ i, b₁ i)`,
-`(a₂ i, b₂ i)`, `(b₁' i, a₁' i)`, `(b₂' i, a₂' i)` of `[U(1)]`, the norm-one ideles of `E` modulo
-those from `E`, and the polynomials `P₁`, `P₂`, `P₁'`, `P₂'`, whose Fock vectors are the real theta
-data.
-
-The hypothesis `IsSquare` says:
-* the rank of `A` is that of `A'` plus `2 t`;
-* the number `N` of negative signs of `W` is that of `A` and `A'` together, and
-  `2 N + 2 ≤ card (n₁ ⊕ n₂) ≤ 2 μ τ + 2 N` at every infinite place `τ`;
-* `ν i` is tame for `𝔪 i ≠ 1`: it has weight `μ` at the infinite places, and its tame part is
-  nontrivial exactly at the places dividing `𝔪 i` and defines the character `χ i` of the residue
-  ring `R = 𝓞 E / 𝔪 i`;
-* the four pairs are edges `e₁ → e`, `ē₂ → ē`, `ē' → ē₁`, `e' → e₂`, a bar being complex conjugation
-  (`New.Exchange.IsPairEdge`): the characters have weights independent of `i`, and the theta
-  integral lifts forms of the first type to forms of the second;
-* with `α[m]` the Hecke character `x ↦ α (x / x̄) * υ x ^ (-m)`, each of the four products
-  `a₁[card n₁] a₂[card n₂]`, `a₁'[card n₁] a₂'[card n₂]`, `b₁[card n'] b₁'[card n]`,
-  `b₂[card n'] b₂'[card n]` at `i` is the inverse of the base change `x ↦ ν i (x / x̄)`.
-
-For a matrix `x` over `R`, `Θ i x` is the theta lift (`pairLift`) from `U₁` to `A` followed by the
-transposed lift (`pairTransposedLift`) to `U₂`; the data modulo `𝔪 i` are the indicator functions of
-the two column blocks of `x`. For a matrix `y` over `R`, `Θ' i y` is the transposed lift from `U₁`
-to `A'` followed by the lift to `U₂`, for the indicator functions of the two row blocks of `y`.
-Then:
-
-(a) `Θ i (g x) = χ i (det g) • Θ i x` and `Θ' i (y g) = χ i (det g) • Θ' i y` for invertible `g`.
-
-(b) There are `C > 0` and a number `κ`, possibly zero, both independent of `i`, and for each `i` a
-number `c` with `‖c‖ ^ 2 = C * lValueProd S (ν i) t ≠ 0`, such that
-`∑ Ψ' y • Θ' i y = (κ / c) • ∑ Ψ x • Θ i x` for all matched `Ψ`, `Ψ'`. Here `S` is the set of places
-dividing `𝔪 i`, and `lValueProd S ν t = ∏_{w ∈ S} q_w ^ (t ^ 2) ∏_{1 ≤ z ≤ t} |L^S(z, ν)| ^ 2`, with
-`q_w` the residue cardinality and `L^S(z, ν)` the Euler product of the base change of `ν` outside
-`S ∪ S̄`. -/
-theorem equivariant_and_exists_sum_eq_of_areMatched {E n n' n₁ n₂ : Type} [Field E] [CMType E]
-    [WeilData E] [Fintype n] [DecidableEq n] [Fintype n'] [DecidableEq n']
-    [Fintype n₁] [DecidableEq n₁] [Fintype n₂] [DecidableEq n₂]
-    {s : n → ℤˣ} {s' : n' → ℤˣ} {s₁ : n₁ → ℤˣ} {s₂ : n₂ → ℤˣ}
-    (A' : Space E n s) (A : Space E n' s') (U₁ : Space E n₁ s₁) (U₂ : Space E n₂ s₂) {I : Type*}
-    {e : GInf E s' → ℂ} {e' : GInf E s → ℂ} {e₁ : GInf E s₁ → ℂ} {e₂ : GInf E s₂ → ℂ}
-    {a₁ a₂ b₁ b₂ a₁' a₂' b₁' b₂' : I → AutChar E}
-    {P₁ : MvPolynomial (InfinitePlace E × n' × n₁) ℂ}
-    {P₂ : MvPolynomial (InfinitePlace E × n' × n₂) ℂ}
-    {P₁' : MvPolynomial (InfinitePlace E × n₁ × n) ℂ}
-    {P₂' : MvPolynomial (InfinitePlace E × n₂ × n) ℂ} (σ : n ⊕ n' ≃ n₁ ⊕ n₂) {t : ℕ}
-    {μ : InfinitePlace E → ℤ} {𝔪 : I → Modulus E} {ν : I → AutChar E}
-    {χ : ∀ i : I, MulChar (𝔪 i).ResidueRing ℂ}
-    (h_square : IsSquare e e' e₁ e₂ a₁ a₂ b₁ b₂ a₁' a₂' b₁' b₂' P₁ P₂ P₁' P₂' t μ 𝔪 ν χ) :
-    let Θ (i : I) (x : Matrix n' (n₁ ⊕ n₂) (𝔪 i).ResidueRing) : U₁.Form e₁ →ₗ[ℂ] U₂.Form e₂ :=
-      pairTransposedLift U₂ A (a₂ i) (b₂ i) P₂ (Pi.single x.toCols₂ 1) e e₂ ∘ₗ
-        pairLift U₁ A (a₁ i) (b₁ i) P₁ (Pi.single x.toCols₁ 1) e₁ e
-    let Θ' (i : I) (y : Matrix (n₁ ⊕ n₂) n (𝔪 i).ResidueRing) : U₁.Form e₁ →ₗ[ℂ] U₂.Form e₂ :=
-      pairLift A' U₂ (b₂' i) (a₂' i) P₂' (Pi.single y.toRows₂ 1) e' e₂ ∘ₗ
-        pairTransposedLift A' U₁ (b₁' i) (a₁' i) P₁' (Pi.single y.toRows₁ 1) e₁ e'
-    -- (a)
-    (∀ (i : I) (g : GL n' (𝔪 i).ResidueRing) (x : Matrix n' (n₁ ⊕ n₂) (𝔪 i).ResidueRing),
-      Θ i (g.val * x) = χ i g.val.det • Θ i x) ∧
-    (∀ (i : I) (g : GL n (𝔪 i).ResidueRing) (y : Matrix (n₁ ⊕ n₂) n (𝔪 i).ResidueRing),
-      Θ' i (y * g.val) = χ i g.val.det • Θ' i y) ∧
-    -- (b)
-    ∃ C : ℝ, 0 < C ∧ ∃ κ : ℂ, ∀ i : I, ∃ c : ℂ,
-      ‖c‖ ^ 2 = C * lValueProd (𝔪 i).places (ν i) t ∧
-      C * lValueProd (𝔪 i).places (ν i) t ≠ 0 ∧
-      ∀ (Ψ : Matrix n' (n₁ ⊕ n₂) (𝔪 i).ResidueRing → ℂ)
-        (Ψ' : Matrix (n₁ ⊕ n₂) n (𝔪 i).ResidueRing → ℂ),
-        AreMatched ⊤ σ (χ i) Ψ Ψ' →
-          ∑ y : Matrix (n₁ ⊕ n₂) n (𝔪 i).ResidueRing, Ψ' y • Θ' i y =
-            (κ / c) • ∑ x : Matrix n' (n₁ ⊕ n₂) (𝔪 i).ResidueRing, Ψ x • Θ i x := by
-  intro Θ Θ'
-  -- Both products of characters of `U₁` and `U₂` are the character `rankTwist ν⁻¹` of `W`, whose
-  -- inverse is tame for `(𝔪, χ)`.
-  have h_card : card (n₁ ⊕ n₂) = card n' + card n := by simp [← card_congr σ, add_comm]
-  have h_rank : card n' = card n + 2 * t := h_square.card_eq
-  have h_even : 2 ∣ card (n₁ ⊕ n₂) := ⟨card n + t, by omega⟩
-  have h_tame_inv (i : I) {α₁ α₂ : AutChar E}
-      (hα : α₁.spaceChar (card n₁) * α₂.spaceChar (card n₂) = (ν i).baseChange⁻¹) :
-      ∃ μ' : InfinitePlace E → ℤ, IsTameFor (𝔪 i) (α₁ * α₂)⁻¹ μ' (χ i) := by
-    rw [(spaceChar_mul_spaceChar_eq_iff card_sum h_even).1 hα]
-    exact (h_square.tame i).exists_inv_rankTwist_inv (n₁ ⊕ n₂)
-  refine ⟨fun i ↦ ?_, fun i ↦ ?_, ?_⟩
-  · obtain ⟨μ', h_tame'⟩ : ∃ μ' : InfinitePlace E → ℤ,
-        IsTameFor (𝔪 i) (a₁ i * a₂ i)⁻¹ μ' (χ i) := h_tame_inv i (h_square.spaceChar_mul_up i)
-    exact pairTransposedLift_comp_pairLift_mul A U₁ U₂ h_square.edge₁ h_square.edge₂ i h_tame'
-  · obtain ⟨μ', h_tame'⟩ : ∃ μ' : InfinitePlace E → ℤ,
-        IsTameFor (𝔪 i) (a₁' i * a₂' i)⁻¹ μ' (χ i) := h_tame_inv i (h_square.spaceChar_mul_down i)
-    exact pairLift_comp_pairTransposedLift_mul A' U₁ U₂ h_square.edge₁' h_square.edge₂' i h_tame'
-  · exact exists_sum_pairLift_comp_pairTransposedLift_eq_smul A' A U₁ U₂ σ h_square
-
-/-- The case of `New.Exchange.equivariant_and_exists_sum_eq_of_areMatched` in which the characters
-of `[U(1)]` come from two families `a`, `b` indexed by finite types: `a` on the pairs `(U₁, A)` and
-`(A', U₂)`, `b` on `(U₂, A)` and `(A', U₁)`, with `a i p * b i q = rankTwist (ν i)⁻¹ (n₁ ⊕ n₂)`
-whenever `card p + card q = card n₁ + card n₂`; here `rankTwist α N = α * upsilonU1 ^ (card N / 2)`,
-with `upsilonU1` the restriction to `[U(1)]` of the fixed splitting character. A type of forms is a
-function on the real unitary group (`GInf`); `k₁`, `k₂`, `k`, `k'` are pairs of conjugate types on
-`U₁`, `U₂`, `A`, `A'`, the edges `h₂`, `h₁'` of the family `b` are taken at `d`, the edges `h₁`,
-`h₂'` of the family `a` at `!d`, and the forms in the conclusion have types `k₁ !d`, `k₂ !d`. The
-four edges are edge families: the characters of each family have fixed weights, a common tame part,
-and the theta integral with the Fock vector of the given polynomial lifts forms of the type at that
-edge's index (`d` or `!d`) to forms of the type at the same index. The number `N` of negative signs
-of `W = U₁ ⊕ U₂` is that of `A` and `A'` together, the rank of `A` is that of `A'` plus `2 t`,
-`2 N + 2 ≤ card (n₁ ⊕ n₂) ≤ 2 μ τ + 2 N` at every infinite place `τ`, and `ν i` is tame of weight
-`μ` for the modulus `𝔪 i`: it has weight `μ` at infinity, and its tame part is ramified exactly at
-the primes of `𝔪 i` and defines the character `χ i` of the residue ring.
+/-- One square for two character families `a`, `b` of `[U(1)]` indexed by finite types: `a` acts on
+the pairs `(U₁, A)` and `(A', U₂)`, `b` on `(U₂, A)` and `(A', U₁)`, with
+`a i p * b i q = rankTwist (ν i)⁻¹ (n₁ ⊕ n₂)` whenever `card p + card q = card n₁ + card n₂`; here
+`rankTwist α N = α * upsilonU1 ^ (card N / 2)`, with `upsilonU1` the restriction to `[U(1)]` of the
+fixed splitting character. A type of forms is a function on the real unitary group (`GInf`); `k₁`,
+`k₂`, `k`, `k'` are pairs of conjugate types on `U₁`, `U₂`, `A`, `A'`, the edges `h₂`, `h₁'` of the
+family `b` are taken at `d`, the edges `h₁`, `h₂'` of the family `a` at `!d`, and the forms in the
+conclusion have types `k₁ !d`, `k₂ !d`. The four edges are edge families: the characters of each
+family have fixed weights, a common tame part, and the theta integral with the Fock vector of the
+given polynomial lifts forms of the type at that edge's index (`d` or `!d`) to forms of the type at
+the same index. The number `N` of negative signs of `W = U₁ ⊕ U₂` is that of `A` and `A'` together,
+the rank of `A` is that of `A'` plus `2 t`, `2 N + 2 ≤ card (n₁ ⊕ n₂) ≤ 2 μ τ + 2 N` at every
+infinite place `τ`, and `ν i` is tame of weight `μ` for the modulus `𝔪 i`: it has weight `μ` at
+infinity, and its tame part is ramified exactly at the primes of `𝔪 i` and defines the character
+`χ i` of the residue ring.
 
 Send a form `f` from `U₁` to `U₂` through `A` (`Θ i x`: lift, then transposed lift) or through `A'`
 (`Θ' i y`: transposed lift, then lift), the data modulo `𝔪 i` being the indicator functions of the
@@ -1001,45 +733,98 @@ lemma one_square_identity_of_isEdgeFamily (A' : Space E n s) (A : Space E n' s')
   intro Θ Θ'
   have h_card : card (n₁ ⊕ n₂) = card n' + card n := by simp [← card_congr σ, add_comm]
   have h_card' : card n' + card n = card n₁ + card n₂ := h_card.symm.trans card_sum
-  have h_even : 2 ∣ card (n₁ ⊕ n₂) := ⟨card n + t, by omega⟩
-  -- in each pair of ranks the two splitting characters multiply to the inverse base change of `ν`
-  have h_ab (i : I) {p q : Type} [Fintype p] [Fintype q]
-      (hpq : card p + card q = card n₁ + card n₂) :
-      (a i p).spaceChar (card p) * (b i q).spaceChar (card q) = (ν i).baseChange⁻¹ :=
-    (spaceChar_mul_spaceChar_eq_iff (card_sum.trans hpq.symm) h_even).2 (h_chars i hpq)
-  have h_ba (i : I) {p q : Type} [Fintype p] [Fintype q]
-      (hpq : card p + card q = card n₁ + card n₂) :
-      (b i p).spaceChar (card p) * (a i q).spaceChar (card q) = (ν i).baseChange⁻¹ := by
-    rw [mul_comm, h_ab i ((add_comm (card q) (card p)).trans hpq)]
-  obtain ⟨h_left, h_right, C, -, κ, h_law⟩ :=
-    equivariant_and_exists_sum_eq_of_areMatched A' A U₁ U₂ σ
-    { negCount_eq := h_signs
-      card_eq := h_rank
-      negCount_lt_half := h_few_neg
-      card_le_weight := hμ
-      tame := h_tame
-      edge₁ := h₁.isPairEdge
-      edge₂ := h₂.isPairEdge_star
-      edge₁' := h₁'.isPairEdge_star
-      edge₂' := h₂'.isPairEdge
-      spaceChar_mul_up := fun i ↦ h_ab i rfl
-      spaceChar_mul_down := fun i ↦ h_ba i rfl
-      spaceChar_mul_first := fun i ↦ h_ab i h_card'
-      spaceChar_mul_second := fun i ↦ h_ba i h_card' }
+  have h_even : 2 ∣ card (n₁ ⊕ n₂) := ⟨card n + t, by lia⟩
+  -- All four products of characters are `rankTwist (ν i)⁻¹ (n₁ ⊕ n₂)`, and one `ν₀` relates
+  -- `(a, b)` on both `A` and `A'`.
+  have ha (i : I) : a i n₁ * b i n₂ = rankTwist (ν i)⁻¹ (n₁ ⊕ n₂) := h_chars i rfl
+  have ha' (i : I) : b i n₁ * a i n₂ = rankTwist (ν i)⁻¹ (n₁ ⊕ n₂) :=
+    (mul_comm (b i n₁) (a i n₂)).trans (h_chars i (add_comm (card n₂) (card n₁)))
+  have hb_space (i : I) :
+      (a i n').spaceChar (card n') * (b i n).spaceChar (card n) = (ν i).baseChange⁻¹ :=
+    (spaceChar_mul_spaceChar_eq_iff (card_sum.trans h_card'.symm) h_even).2 (h_chars i h_card')
+  let ν₀ (i : I) : AutChar E := a i n' / b i n'
+  have hν₀ (i : I) : b i n' * ν₀ i = a i n' := mul_div_cancel (b i n') (a i n')
+  have hν₀' (i : I) : b i n * ν₀ i = a i n := by
+    have h_eq : b i n * a i n' = b i n' * a i n := calc
+      b i n * a i n' = a i n' * b i n := mul_comm _ _
+      _ = a i n * b i n' :=
+        (h_chars i h_card').trans (h_chars i ((add_comm _ _).trans h_card')).symm
+      _ = b i n' * a i n := mul_comm _ _
+    rw [← mul_div_assoc, h_eq, mul_div_cancel_left]
+  have h𝔪 (i : I) : Nonempty (𝔪 i).places := (h_tame i).left
+  have h_edge₁ := h₁.isPairEdge
+  have h_edge₂ := h₂.isPairEdge_star
+  have h_edge₁' := h₁'.isPairEdge_star
+  have h_edge₂' := h₂'.isPairEdge
+  -- Apply the exchange identity to the Fock vector `v` of the product of `Φ₁'` and `Φ₂'`.
+  let v : PairFock E s (s₁ ⊕ᵥ s₂) :=
+    polyVector _ (renameRowsCols Sum.inl id Φ₁' * renameRowsCols Sum.inr id Φ₂')
+  have hv : IsSchwartzVector v := fun N ↦ fockMoment_polyVector_ne_top N _
+  obtain ⟨C, -, w, hw, h_exch⟩ :=
+    exchange_identity (U₁.sum U₂) A A' σ h_signs h_rank h_few_neg hμ hv
+  obtain ⟨κ, hκ⟩ :=
+    exists_integral_upIntegrand_eq_mul_integral_lift A U₁ U₂ h_edge₁ h_edge₂ hν₀ h𝔪 hw
   refine ⟨C, κ, fun i ↦ ?_⟩
-  obtain ⟨c, h_size, h_ne, h_part⟩ := h_law i
+  obtain ⟨c, h_size, h_ne, h_exch_i⟩ := h_exch (𝔪 i) (ν i) (χ i) (h_tame i)
   have hc : c ≠ 0 := ne_zero_of_norm_sq_eq h_size h_ne
-  -- each clause is an identity of linear maps, evaluated at `f` and followed by `l`
+  obtain ⟨μ', h_tame_inv⟩ := (h_tame i).exists_inv_rankTwist_inv (n₁ ⊕ n₂)
   refine ⟨c, hc, h_size, fun f l ↦
     { left_mul := fun g x ↦ ?_
       right_mul := fun g y ↦ ?_
-      sum_eq_of_areMatched := fun Ψ Ψ' hΨ ↦ ?_ }⟩
-  · have h_map : Θ i (g.val * x) = χ i g.val.det • Θ i x := h_left i g x
+      sum_eq_of_areMatched := fun Ψ Ψ' h_part ↦ ?_ }⟩
+  · have h_map : Θ i (g.val * x) = χ i g.val.det • Θ i x :=
+      pairTransposedLift_comp_pairLift_mul A U₁ U₂ h_edge₁ h_edge₂ i
+        (by rwa [ha] : IsTameFor (𝔪 i) (a i n₁ * b i n₂)⁻¹ μ' (χ i)) g x
     rw [h_map, LinearMap.smul_apply, map_smul, smul_eq_mul]
-  · have h_map : Θ' i (y * g.val) = χ i g.val.det • Θ' i y := h_right i g y
+  · have h_map : Θ' i (y * g.val) = χ i g.val.det • Θ' i y :=
+      pairLift_comp_pairTransposedLift_mul A' U₁ U₂ h_edge₁' h_edge₂' i
+        (by rwa [ha'] : IsTameFor (𝔪 i) (b i n₁ * a i n₂)⁻¹ μ' (χ i)) g y
     rw [h_map, LinearMap.smul_apply, map_smul, smul_eq_mul]
-  · have h_map : ∑ y, Ψ' y • Θ' i y = (κ / c) • ∑ x, Ψ x • Θ i x := h_part Ψ Ψ' hΨ
-    simpa using congrArg (fun L ↦ l (L f)) h_map
+  · -- Pair against `f₂ = conj z` of type `star (k₂ !d)` and integrate the exchange identity.
+    have h_sum : ∑ y, Ψ' y • Θ' i y f = (κ / c) • ∑ x, Ψ x • Θ i x f := by
+      refine ext_inner_left ℂ fun z ↦ ?_
+      let f₂ : U₂.Form (star (k₂ !d)) := conjForm rfl z
+      have hf₁ : f.val ∈ U₁.rapidFunctions := f.prop.mem_rapidFunctions h_edge₁.isCuspKernel
+      have hf₂ : f₂.val ∈ U₂.rapidFunctions := f₂.prop.mem_rapidFunctions h_edge₂.isCuspKernel
+      have h_inner (g_form : U₂.Form (k₂ !d)) :
+          inner ℂ z g_form = ∫ g, f₂ g * g_form g ∂U₂.quotMeasure := rfl
+      let μU : Measure (G E s₁ × G E s₂) := U₁.quotMeasure.prod U₂.quotMeasure
+      let F (x : Matrix n' (n₁ ⊕ n₂) (𝔪 i).ResidueRing) : (G E s₁ × G E s₂) × G E s' → ℂ :=
+        upIntegrand A U₁ U₂ (ν₀ i) (a i n₁ * b i n₂) (a i n') f f₂ x w
+      let F' (y : Matrix (n₁ ⊕ n₂) n (𝔪 i).ResidueRing) : (G E s₁ × G E s₂) × G E s → ℂ :=
+        downIntegrand A' U₁ U₂ (ν₀ i) (b i n₁ * a i n₂) (b i n) f f₂ y v
+      have h_exch_at (g : G E s₁ × G E s₂) : ∫ h, ∑ x, Ψ x • F x (g, h) ∂A.quotMeasure =
+          c * ∫ h, ∑ y, Ψ' y • F' y (g, h) ∂A'.quotMeasure := by
+        have h_theta := h_exch_i (a i n') (b i n) (hb_space i) Ψ Ψ' h_part (G.sum g)
+        simp only [F, F', ha, ha']
+        exact integral_sum_upIntegrand_eq_mul A' A U₁ U₂ (ν₀ i) h_theta
+      have h_up : ∫ g, ∫ h, ∑ x, Ψ x • F x (g, h) ∂A.quotMeasure ∂μU =
+          ∑ x, Ψ x • (κ * inner ℂ z (Θ i x f)) := by
+        refine integral_integral_sum_eq (fun x hx ↦ ?_) fun x hx ↦ ?_
+        · exact integrable_upIntegrand A U₁ U₂ (ν₀ i) (a i n₁ * b i n₂) (a i n') (h𝔪 i) hf₁ hf₂
+            (hasLeftInv_transpose_of_areMatched h_part hx) hw
+        · rw [h_inner]
+          exact hκ i x (hasLeftInv_transpose_of_areMatched h_part hx) f f₂
+      have h_down : ∫ g, ∫ h, ∑ y, Ψ' y • F' y (g, h) ∂A'.quotMeasure ∂μU =
+          ∑ y, Ψ' y • inner ℂ z (Θ' i y f) := by
+        simp only [h_inner]
+        exact integral_integral_sum_downIntegrand A' U₁ U₂ h_edge₁' h_edge₂' i (hν₀' i) (h𝔪 i)
+          (fun y hy ↦ hasLeftInv_of_areMatched h_part hy) hf₁ hf₂
+      have h_scalar : κ * ∑ x, Ψ x * inner ℂ z (Θ i x f) =
+          c * ∑ y, Ψ' y * inner ℂ z (Θ' i y f) := by
+        have h_eq : ∑ x, Ψ x • (κ * inner ℂ z (Θ i x f)) =
+            c * ∑ y, Ψ' y • inner ℂ z (Θ' i y f) := by
+          rw [← h_up, ← h_down, ← integral_const_mul]
+          exact integral_congr_ae (.of_forall h_exch_at)
+        simpa only [smul_eq_mul, mul_left_comm (Ψ _), ← Finset.mul_sum] using h_eq
+      calc
+        inner ℂ z (∑ y, Ψ' y • Θ' i y f) = ∑ y, Ψ' y * inner ℂ z (Θ' i y f) := by
+          simp
+        _ = κ / c * ∑ x, Ψ x * inner ℂ z (Θ i x f) := by
+          rw [div_mul_eq_mul_div, h_scalar, mul_div_cancel_left₀ _ hc]
+        _ = inner ℂ z ((κ / c) • ∑ x, Ψ x • Θ i x f) := by
+          simp
+    simpa using congrArg l h_sum
 
 end New.Exchange
 

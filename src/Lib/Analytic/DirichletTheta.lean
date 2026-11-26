@@ -6,11 +6,12 @@ public import Lib.Analytic.PolyaVinogradov
 # Theta series of Dirichlet characters, Poisson summation, and `L(s, χ)` as a Mellin transform
 
 For a parity `j ∈ {0, 1}`, the weight `w(z) = z ^ j e^(-π z²)` and coefficients `c(n)`, this file
-studies the theta series `θ(u) = u ^ (1/2) ∑_{n ≥ 1} c(n) w(n u)`. It bounds `θ` and expresses its
-Mellin transform through the Dirichlet series of `c`. For a Dirichlet character `χ ≠ 1` of parity
-`j`, Poisson summation bounds the series near `0` and so gives the formula for `L(s, χ)` in
-`re s > 0` (`hasMellin_thetaSeries_char`); if `χ` is also primitive, it gives the transformation
-formula of `|θ|` (`norm_thetaSeries_inv`).
+studies the series `θ(u) = ∑_{n ≥ 1} c(n) w(n u)` (`gaussianTheta`). It bounds `θ` and expresses
+its Mellin transform through the Dirichlet series of `c`. For a Dirichlet character `χ ≠ 1` of
+parity `j`, Poisson summation bounds the series near `0` and so gives the formula for `L(s, χ)` in
+`re s > 0` (`hasMellin_gaussianTheta_char`); if `χ` is also primitive, it gives the transformation
+formula of `|θ|` (`norm_gaussianTheta_inv`) and folds the tail integral (`thetaTailIntegral`) at
+`q ^ (-1/2)` (`integral_norm_gaussianTheta_div`).
 
 ## Relation to the literature
 
@@ -35,19 +36,20 @@ def gaussianMonomial (j : Fin 2) (z : ℝ) : ℝ := z ^ j.val * rexp (-π * z ^ 
 def gaussianTheta (j : Fin 2) (c : ℕ → ℂ) (u : ℝ) : ℂ :=
   ∑' n : ℕ+, c n * gaussianMonomial j (n * u)
 
-/-- The theta series `θ(u) = u ^ (1/2) ∑_{n ≥ 1} c(n) w(n u)`. -/
-def thetaSeries (j : Fin 2) (c : ℕ → ℂ) (u : ℝ) : ℂ := √u * gaussianTheta j c u
+/-- The tail integral `∫_r^∞ |θ(u)| du / √u`, where `θ` is `gaussianTheta j c`. -/
+def thetaTailIntegral (j : Fin 2) (c : ℕ → ℂ) (r : ℝ) : ℝ :=
+  ∫ u : ℝ in Ioi r, ‖gaussianTheta j c u‖ / √u
 
 /-- The Mellin transform `Γ_j(s) = ∫_0^∞ w(z) z ^ s dz / z` of the weight `w`. -/
 def gaussianMellin (j : Fin 2) : ℂ → ℂ := mellin (gaussianMonomial j ·)
+
+lemma thetaTailIntegral_nonneg (j : Fin 2) (c : ℕ → ℂ) (r : ℝ) : 0 ≤ thetaTailIntegral j c r :=
+  setIntegral_nonneg measurableSet_Ioi fun _ _ ↦ by positivity
 
 variable {j : Fin 2} {c : ℕ → ℂ} {q : ℕ} {t : ℝ} {s : ℂ} [NeZero q] {χ : DirichletCharacter ℂ q}
 
 lemma measurable_gaussianTheta : Measurable (gaussianTheta j c) := by
   fun_prop [gaussianTheta, gaussianMonomial]
-
-lemma measurable_thetaSeries : Measurable (thetaSeries j c) :=
-  (measurable_ofReal.comp continuous_sqrt.measurable).mul measurable_gaussianTheta
 
 /-- If a measurable function `f` satisfies `‖f(t)‖ ≤ D e^(-t)` for `t > 0`, then at every `s` with
 `re s > 0` the Mellin integral of `f` converges absolutely and `mellin f` is differentiable at
@@ -123,7 +125,7 @@ lemma summable_and_norm_gaussianTheta_le (hc : ∀ n : ℕ, ‖c n‖ ≤ 1) (ht
       simpa using (hasSum_nat_add_iff' 1).2 ((hasSum_geometric_of_abs_lt_one hr).mul_left 3)
   have h_term (n : ℕ+) : ‖c n * gaussianMonomial j (n * t)‖ ≤ 3 * r ^ (n : ℕ) := by
     grw [norm_mul, hc, norm_real, norm_gaussianMonomial_le (by positivity)]
-    simp [r, ← Real.exp_nat_mul, field]
+    simp [r, ← Real.exp_natCast_mul, field]
   -- As `t + 1 ≤ e^t`, we have `(t + e^(-t)) e^(-t) ≤ 1`.
   have h_mul_exp_le : t * rexp (-t) ≤ 1 - r := by
     nlinarith [add_one_le_exp t, exp_pos (-t), exp_le_one_iff.2 (neg_nonpos.2 ht.le),
@@ -135,47 +137,21 @@ lemma summable_and_norm_gaussianTheta_le (hc : ∀ n : ℕ, ‖c n‖ ≤ 1) (ht
       _ = 3 * rexp (-t) / t := by simp [r, field]
   exact ⟨h_geom.summable.of_norm_bounded h_term, (tsum_of_norm_bounded h_geom h_term).trans h_sum⟩
 
-/-- The absolute value of `θ(u) = u ^ (1/2) ∑_{n ≥ 1} c(n) w(n u)` is `u ^ (1/2)` times that of
-the sum. -/
-lemma norm_thetaSeries (u : ℝ) : ‖thetaSeries j c u‖ = √u * ‖gaussianTheta j c u‖ := by
-  rw [thetaSeries, norm_mul, norm_real, norm_of_nonneg (sqrt_nonneg u)]
-
-/-- The trivial bound: if `|c(n)| ≤ 1` and `t > 0`, then the theta series
-`θ(t) = t ^ (1/2) ∑_{n ≥ 1} c(n) w(n t)` is at most `3 t ^ (-1/2) e^(-t)` in absolute value. -/
-lemma norm_thetaSeries_le (hc : ∀ n : ℕ, ‖c n‖ ≤ 1) (ht : 0 < t) :
-    ‖thetaSeries j c t‖ ≤ 3 * rexp (-t) / √t :=
-  calc ‖thetaSeries j c t‖ ≤ √t * (3 * rexp (-t) / t) := by
-        grw [norm_thetaSeries, (summable_and_norm_gaussianTheta_le hc ht).2]
-    _ = 3 * rexp (-t) * (√t / t) := by ring
-    _ = 3 * rexp (-t) / √t := by rw [sqrt_div_self', mul_one_div]
-
-/-- For `|c(n)| ≤ 1` and `r > 0` the integral `∫_r^∞ |θ(u)| du / u` converges, by the trivial bound
-on `θ`. -/
-lemma integrableOn_norm_thetaSeries_div (hc : ∀ n : ℕ, ‖c n‖ ≤ 1) {r : ℝ} (hr : 0 < r) :
-    IntegrableOn (fun u : ℝ ↦ ‖thetaSeries j c u‖ / u) (Ioi r) := by
-  have h_majorant : IntegrableOn (fun u : ℝ ↦ 3 * rexp (-u) / √r / r) (Ioi r) :=
-    (((integrableOn_exp_neg_Ioi r).const_mul 3).div_const √r).div_const r
-  have h_le (u : ℝ) (hu : r < u) : ‖‖thetaSeries j c u‖ / u‖ ≤ 3 * rexp (-u) / √r / r := by
-    have hu_pos : 0 < u := hr.trans hu
-    grw [norm_of_nonneg (by positivity), norm_thetaSeries_le hc hu_pos]
-    gcongr
-  exact h_majorant.mono' (measurable_thetaSeries.norm.div measurable_id).aestronglyMeasurable
-    (ae_restrict_of_forall_mem measurableSet_Ioi h_le)
-
-/-- For `t > 0` we have `t ^ (s - 1/2 - 1) θ(t) = t ^ (s - 1) ∑_{n ≥ 1} c(n) w(n t)`: the
-integrands of the Mellin transforms of `θ` at `s - 1/2` and of the series at `s` agree. -/
-lemma cpow_smul_thetaSeries (s : ℂ) (ht : 0 < t) :
-    (t : ℂ) ^ (s - 2⁻¹ - 1) • thetaSeries j c t = (t : ℂ) ^ (s - 1) • gaussianTheta j c t := by
-  have h_sqrt : (√t : ℂ) = t ^ (2⁻¹ : ℂ) := by simp [sqrt_eq_rpow, ofReal_cpow ht.le]
-  rw [thetaSeries, h_sqrt, smul_eq_mul, smul_eq_mul, ← mul_assoc,
-    ← cpow_add _ _ (ofReal_ne_zero.2 ht.ne')]
-  ring_nf
-
-/-- The Mellin transform of `θ(u) = u ^ (1/2) ∑_{n ≥ 1} c(n) w(n u)` at `s - 1/2` is that of the sum
-at `s`. -/
-lemma mellin_thetaSeries_sub_half (s : ℂ) :
-    mellin (thetaSeries j c) (s - 2⁻¹) = mellin (gaussianTheta j c) s :=
-  setIntegral_congr_fun measurableSet_Ioi fun _ ht ↦ cpow_smul_thetaSeries s ht
+/-- For `|c(n)| ≤ 1` and `r > 0` the integral `∫_r^∞ |θ(u)| du / √u` converges, where `θ` is
+`gaussianTheta j c`. -/
+lemma integrableOn_norm_gaussianTheta_div (hc : ∀ n : ℕ, ‖c n‖ ≤ 1) {r : ℝ} (hr : 0 < r) :
+    IntegrableOn (fun u : ℝ ↦ ‖gaussianTheta j c u‖ / √u) (Ioi r) := by
+  have h_majorant : IntegrableOn (fun u : ℝ ↦ 3 * rexp (-u) / (r * √r)) (Ioi r) :=
+    ((integrableOn_exp_neg_Ioi r).const_mul 3).div_const (r * √r)
+  refine h_majorant.mono'
+    (measurable_gaussianTheta.norm.div continuous_sqrt.measurable).aestronglyMeasurable
+    (ae_restrict_of_forall_mem measurableSet_Ioi fun u (hu : r < u) ↦ ?_)
+  have hu_pos : 0 < u := hr.trans hu
+  calc ‖‖gaussianTheta j c u‖ / √u‖
+    _ ≤ (3 * rexp (-u) / u) / √u := by
+      grw [norm_of_nonneg (by positivity), (summable_and_norm_gaussianTheta_le hc hu_pos).2]
+    _ = 3 * rexp (-u) / (u * √u) := div_div _ _ _
+    _ ≤ 3 * rexp (-u) / (r * √r) := by gcongr
 
 /-- By the substitution `u = t²`, the Mellin transform of `t ^ k F(t²)` at `s` is half that of
 `F` at `(s + k) / 2`. -/
@@ -229,28 +205,21 @@ lemma mellin_gaussianTheta (hc : ∀ n : ℕ, ‖c n‖ ≤ 1) (hs : 1 < s.re) :
     _ = gaussianMellin j s * LSeries c s := by
         rw [tsum_mul_left, tsum_pnat_eq_tsum_of_eq_zero (LSeries.term_zero c s), LSeries]
 
-/-- Riemann's formula `∫_0^∞ θ(u) u ^ (s - 1/2) du / u = Γ_j(s) L(s, c)` for `re s > 1` and
-`|c(n)| ≤ 1`, where `θ` is the theta series of `c` and `Γ_j` the Mellin transform of its weight
-`w(z) = z ^ j e^(-π z²)`. -/
-lemma mellin_thetaSeries (hc : ∀ n : ℕ, ‖c n‖ ≤ 1) (hs : 1 < s.re) :
-    mellin (thetaSeries j c) (s - 2⁻¹) = gaussianMellin j s * LSeries c s := by
-  rw [mellin_thetaSeries_sub_half, mellin_gaussianTheta hc hs]
-
 /-- If `|c(n)| ≤ 1` for all `n`, then also `|c(n) μ(n)| ≤ 1`, where `μ` is the Möbius function. -/
 lemma norm_mul_moebius_le_one (hc : ∀ n : ℕ, ‖c n‖ ≤ 1) (n : ℕ) : ‖c n * μ n‖ ≤ 1 := by
   grw [norm_mul, hc, one_mul, Complex.norm_intCast, ← Int.cast_abs, abs_moebius_le_one,
     Int.cast_one]
 
-/-- Riemann's formula for `1 / L`: if `re s > 1`, then the theta series `θ` with coefficients
-`χ(n) μ(n)` satisfies `∫_0^∞ θ(u) u ^ (s - 1/2) du / u = Γ_j(s) / L(s, χ)`, where `Γ_j` is the
-Mellin transform of the weight `w(z) = z ^ j e^(-π z²)`. -/
-lemma mellin_thetaSeries_moebius (χ : DirichletCharacter ℂ q) (hs : 1 < s.re) :
-    mellin (thetaSeries j fun n : ℕ ↦ χ n * μ n) (s - 2⁻¹) =
+/-- Riemann's formula for `1 / L`: if `re s > 1`, then `gaussianTheta` with coefficients
+`χ(n) μ(n)` satisfies `∫_0^∞ θ(u) u ^ s du / u = Γ_j(s) / L(s, χ)`, where `Γ_j` is the Mellin
+transform of `w(z) = z ^ j e^(-π z²)`. -/
+lemma mellin_gaussianTheta_moebius (χ : DirichletCharacter ℂ q) (hs : 1 < s.re) :
+    mellin (gaussianTheta j fun n : ℕ ↦ χ n * μ n) s =
       gaussianMellin j s / χ.LFunction s := by
   have h_inv : χ.LFunction s * LSeries (fun n : ℕ ↦ χ n * μ n) s = 1 := by
     rw [χ.LFunction_eq_LSeries hs]
     exact DirichletCharacter.LSeries.mul_mu_eq_one χ hs
-  rw [mellin_thetaSeries (norm_mul_moebius_le_one fun n ↦ χ.norm_le_one n) hs,
+  rw [mellin_gaussianTheta (norm_mul_moebius_le_one fun n ↦ χ.norm_le_one n) hs,
     eq_inv_of_mul_eq_one_right h_inv, div_eq_mul_inv]
 
 omit [NeZero q] in
@@ -346,7 +315,7 @@ lemma hasSum_invDFT_mul_gaussianMonomial (Φ : ZMod q → ℂ) {S : ZMod q → �
       (I ^ j.val * t * ∑ a : ZMod q, Φ a * S a) := by
   have h_char (a : ZMod q) (n : ℤ) :
       stdAddChar (a * (n : ZMod q)) = cexp (2 * π * I * (a.val / q : ℝ) * n) := by
-    rw [← zsmul_eq_mul', AddChar.map_zsmul_eq_zpow, stdAddChar_apply, toCircle_apply, ← exp_int_mul]
+    rw [← zsmul_eq_mul', AddChar.map_zsmul_eq_zpow, stdAddChar_apply, toCircle_apply, ← Complex.exp_intCast_mul]
     push_cast
     ring_nf
   have h_value : (∑ a : ZMod q, Φ a * (I ^ j.val * (q * t : ℝ) * S a)) / q =
@@ -397,26 +366,26 @@ lemma gaussianTheta_poisson_summation (hχ_ne : χ ≠ 1) (hχ_parity : χ (-1) 
   simp [abs_of_pos ht]
 
 /-- **Symmetry.** For primitive `χ ≠ 1` of conductor `q` with `χ(-1) = (-1) ^ j` and `t > 0` we have
-`|θ_χ(t)| = |θ_χ(1 / (q t))|`, where `θ_χ(u) = u ^ (1/2) ∑_{n ≥ 1} χ(n) (n u) ^ j e^(-π n² u²)` is
-`thetaSeries`. This is the functional equation of the theta series of a primitive character, in
-absolute value. -/
-theorem norm_thetaSeries_inv (hχ_ne : χ ≠ 1) (hχ_parity : χ (-1) = (-1) ^ j.val)
+`|θ_χ(1 / (q t))| = √q t |θ_χ(t)|`, where `θ_χ(u) = ∑_{n ≥ 1} χ(n) (n u) ^ j e^(-π n² u²)` is
+`gaussianTheta`. -/
+theorem norm_gaussianTheta_inv (hχ_ne : χ ≠ 1) (hχ_parity : χ (-1) = (-1) ^ j.val)
     (hχ : χ.IsPrimitive) (ht : 0 < t) :
-    ‖thetaSeries j (fun n : ℕ ↦ χ n) (q * t)⁻¹‖ = ‖thetaSeries j (fun n : ℕ ↦ χ n) t‖ := by
-  have hq : (0 : ℝ) < q := Nat.cast_pos.2 (NeZero.pos q)
+    ‖gaussianTheta j (fun n : ℕ ↦ χ n) (q * t)⁻¹‖ =
+      √q * t * ‖gaussianTheta j (fun n : ℕ ↦ χ n) t‖ := by
   -- `q 𝓕⁻ χ` is a Gauss sum, of modulus `√q`, times the conjugate of `χ`, and `w` is real.
-  have h_dual (u : ℝ) : √q * ‖gaussianTheta j (fun n : ℕ ↦ 𝓕⁻ χ n) u‖ =
-      ‖gaussianTheta j (fun n : ℕ ↦ χ n) u‖ := by
-    have h_coeff (n : ZMod q) : 𝓕⁻ χ n = (q : ℂ)⁻¹ * gaussSum χ stdAddChar * star (χ n) := by
-      rw [invDFT_apply', hχ.fourierTransform_eq_inv_mul_gaussSum, neg_neg, smul_eq_mul,
-        χ.star_apply', mul_comm (χ⁻¹ n), mul_assoc]
-    have h_theta : gaussianTheta j (fun n : ℕ ↦ 𝓕⁻ χ n) u =
-        (q : ℂ)⁻¹ * gaussSum χ stdAddChar * star (gaussianTheta j (fun n : ℕ ↦ χ n) u) := by
-      simp [gaussianTheta, tsum_star, h_coeff, mul_assoc, ← tsum_mul_left]
-    simp [h_theta, norm_gaussSum_of_isPrimitive hχ, field]
-  rw [norm_thetaSeries, norm_thetaSeries, ← h_dual,
-    ← gaussianTheta_poisson_summation hχ_ne hχ_parity ht, sqrt_inv, sqrt_mul hq.le]
-  simp [field, sq_sqrt ht.le]
+  have h_coeff (n : ZMod q) : 𝓕⁻ χ n = (q : ℂ)⁻¹ * gaussSum χ stdAddChar * star (χ n) := by
+    rw [invDFT_apply', hχ.fourierTransform_eq_inv_mul_gaussSum, neg_neg, smul_eq_mul,
+      χ.star_apply', mul_comm (χ⁻¹ n), mul_assoc]
+  have h_theta : gaussianTheta j (fun n : ℕ ↦ 𝓕⁻ χ n) (q * t)⁻¹ =
+      (q : ℂ)⁻¹ * gaussSum χ stdAddChar *
+        star (gaussianTheta j (fun n : ℕ ↦ χ n) (q * t)⁻¹) := by
+    simp [gaussianTheta, tsum_star, h_coeff, mul_assoc, ← tsum_mul_left]
+  have h_dual : √q * ‖gaussianTheta j (fun n : ℕ ↦ 𝓕⁻ χ n) (q * t)⁻¹‖ =
+      ‖gaussianTheta j (fun n : ℕ ↦ χ n) (q * t)⁻¹‖ := by
+    rw [h_theta]
+    simp [norm_gaussSum_of_isPrimitive hχ, field]
+    exact mul_div_cancel_left₀ _ (Nat.cast_ne_zero.mpr (NeZero.ne q))
+  rw [← h_dual, ← gaussianTheta_poisson_summation hχ_ne hχ_parity ht, mul_assoc]
 
 /-- For `χ ≠ 1` of parity `j ∈ {0, 1}` modulo `q` and `t > 0` the sum `∑_{n ≥ 1} χ(n) w(n t)`, with
 `w(z) = z ^ j e^(-π z²)`, has absolute value at most `3 e q e^(-t)`: trivially for `t ≥ 1`, by
@@ -443,12 +412,13 @@ lemma norm_gaussianTheta_char_le (hχ_ne : χ ≠ 1) (hχ_parity : χ (-1) = (-1
     _ ≤ 3 * rexp (1 - t) / (q * t)⁻¹ := by gcongr; linarith
     _ = t * (3 * q * rexp 1 * rexp (-t)) := by simp [sub_eq_add_neg, Real.exp_add, field]
 
-/-- For `χ ≠ 1` of parity `j` and `re s > 0`, the Mellin transform of `∑_{n ≥ 1} χ(n) w(n u)` at `s`
-is `Γ_j(s) L(s, χ)`, where `Γ_j` is the Mellin transform of `w(z) = z ^ j e^(-π z²)`. This extends
-`mellin_gaussianTheta` by analytic continuation. -/
-lemma mellin_gaussianTheta_char (hχ_ne : χ ≠ 1) (hχ_parity : χ (-1) = (-1) ^ j.val)
+/-- **Riemann's formula.** For `χ ≠ 1` with `χ(-1) = (-1) ^ j` and `re s > 0` the Mellin integral
+`∫_0^∞ θ_χ(u) u ^ s du / u = Γ_j(s) L(s, χ)` converges absolutely (`HasMellin`), where `θ_χ` is
+`gaussianTheta` and `Γ_j` is `gaussianMellin`. This extends `mellin_gaussianTheta` by analytic
+continuation. -/
+theorem hasMellin_gaussianTheta_char (hχ_ne : χ ≠ 1) (hχ_parity : χ (-1) = (-1) ^ j.val)
     (hs : 0 < s.re) :
-    mellin (gaussianTheta j fun n : ℕ ↦ χ n) s = gaussianMellin j s * χ.LFunction s := by
+    HasMellin (gaussianTheta j fun n : ℕ ↦ χ n) s (gaussianMellin j s * χ.LFunction s) := by
   -- Both sides are holomorphic for `re s > 0` and agree for `re s > 1` by `mellin_gaussianTheta`.
   let f : ℂ → ℂ := mellin (gaussianTheta j fun n : ℕ ↦ χ n)
   let g (z : ℂ) : ℂ := gaussianMellin j z * χ.LFunction z
@@ -459,23 +429,11 @@ lemma mellin_gaussianTheta_char (hχ_ne : χ ≠ 1) (hχ_parity : χ (-1) = (-1)
     gaussianMellin_differentiableOn_and_bdd.1.mul (by fun_prop)
   have h_near_two : f =ᶠ[nhds 2] g := .mono ((isOpen_re_gt 1).mem_nhds (by simp)) fun z hz ↦ by
     simp only [f, g, mellin_gaussianTheta (fun n ↦ χ.norm_le_one n) hz, χ.LFunction_eq_LSeries hz]
+  refine ⟨(mellinConvergent_and_differentiableAt
+      (fun _ ↦ norm_gaussianTheta_char_le hχ_ne hχ_parity) measurable_gaussianTheta hs).1, ?_⟩
   exact (hf.analyticOnNhd (isOpen_re_gt 0)).eqOn_of_preconnected_of_eventuallyEq
     (hg.analyticOnNhd (isOpen_re_gt 0)) (convex_halfSpace_re_gt 0).isPreconnected
     (by simp) h_near_two hs
-
-/-- **Riemann's formula.** For `χ ≠ 1` with `χ(-1) = (-1) ^ j` and `re s > 0` the
-identity `∫_0^∞ θ_χ(u) u ^ (s - 1/2) du / u = Γ_j(s) L(s, χ)` holds with absolute convergence
-(`HasMellin`), where `θ_χ` is `thetaSeries` and `Γ_j` the Mellin transform of
-`z ^ j e^(-π z²)`. -/
-theorem hasMellin_thetaSeries_char (hχ_ne : χ ≠ 1) (hχ_parity : χ (-1) = (-1) ^ j.val)
-    (hs : 0 < s.re) :
-    HasMellin (thetaSeries j fun n : ℕ ↦ χ n) (s - 2⁻¹)
-      (gaussianMellin j s * χ.LFunction s) := by
-  have h_conv : MellinConvergent (gaussianTheta j fun n : ℕ ↦ χ n) s :=
-    (mellinConvergent_and_differentiableAt (fun _ ↦ norm_gaussianTheta_char_le hχ_ne hχ_parity)
-      measurable_gaussianTheta hs).1
-  refine ⟨h_conv.congr_fun (fun _ ht ↦ (cpow_smul_thetaSeries s ht).symm) measurableSet_Ioi, ?_⟩
-  rw [mellin_thetaSeries_sub_half, mellin_gaussianTheta_char hχ_ne hχ_parity hs]
 
 /-- For `b, r > 0` with `1 / (b r) = r`, the map `u ↦ 1 / (b u)` takes the interval `(0, r)` onto
 `(r, ∞)`. -/
@@ -490,32 +448,36 @@ lemma image_inv_const_mul_Ioo {b r : ℝ} (hb : 0 < b) (hr : 0 < r) (h_fix : (b 
     by field⟩
 
 /-- The fold: for primitive `χ ≠ 1` of conductor `q` with `χ(-1) = (-1) ^ j`,
-`∫_0^∞ |θ_χ(u)| du / u = 2 ∫_{q ^ (-1/2)}^∞ |θ_χ(u)| du / u`, where
-`θ_χ(u) = u ^ (1/2) ∑_{n ≥ 1} χ(n) (n u) ^ j e^(-π n² u²)` is `thetaSeries`. -/
-lemma integral_norm_thetaSeries_div (hχ_ne : χ ≠ 1) (hχ_parity : χ (-1) = (-1) ^ j.val)
+`∫_0^∞ |θ_χ(u)| du / √u = 2 ∫_{q ^ (-1/2)}^∞ |θ_χ(u)| du / √u`, where `θ_χ` is `gaussianTheta`. -/
+lemma integral_norm_gaussianTheta_div (hχ_ne : χ ≠ 1) (hχ_parity : χ (-1) = (-1) ^ j.val)
     (hχ : χ.IsPrimitive) :
-    ∫ u : ℝ in Ioi 0, ‖thetaSeries j (fun n : ℕ ↦ χ n) u‖ / u =
-      2 * ∫ u : ℝ in Ioi (√q)⁻¹, ‖thetaSeries j (fun n : ℕ ↦ χ n) u‖ / u := by
-  -- The map `u ↦ 1 / (q u)` has the fixed point `r = q ^ (-1/2)` and preserves `du / u` and
-  -- `|θ_χ|`.
-  let f (u : ℝ) : ℝ := ‖thetaSeries j (fun n : ℕ ↦ χ n) u‖ / u
+    thetaTailIntegral j (fun n : ℕ ↦ χ n) 0 =
+      2 * thetaTailIntegral j (fun n : ℕ ↦ χ n) (√q)⁻¹ := by
+  -- The map `u ↦ 1 / (q u)` has the fixed point `r = q ^ (-1/2)` and preserves `|θ_χ(u)| du / √u`.
+  let f (u : ℝ) : ℝ := ‖gaussianTheta j (fun n : ℕ ↦ χ n) u‖ / √u
   let r : ℝ := (√q)⁻¹
   have hq : (0 : ℝ) < q := Nat.cast_pos.2 (NeZero.pos q)
   have hr : 0 < r := by positivity
   have h_fix : (q * r)⁻¹ = r := by rw [← div_eq_mul_inv, div_sqrt]
   have h_int : IntegrableOn f (Ioi 0) := by
-    refine (hasMellin_thetaSeries_char hχ_ne hχ_parity (s := 2⁻¹) (by simp)).1.norm.congr
+    refine (hasMellin_gaussianTheta_char hχ_ne hχ_parity (s := 2⁻¹) (by norm_num)).1.norm.congr
       (ae_restrict_of_forall_mem measurableSet_Ioi fun u (hu : 0 < u) ↦ ?_)
-    simp [f, cpow_neg_one, abs_of_pos hu, div_eq_inv_mul]
+    change ‖(u : ℂ) ^ ((2⁻¹ : ℂ) - 1) • gaussianTheta j (fun n : ℕ ↦ χ n) u‖ = f u
+    rw [norm_smul, norm_cpow_eq_rpow_re_of_pos hu, show ((2⁻¹ : ℂ) - 1).re = -(1 / 2) by norm_num,
+      rpow_neg hu.le, ← sqrt_eq_rpow, ← div_eq_inv_mul]
   have h_deriv (u : ℝ) (hu : u ∈ Ioo 0 r) :
       HasDerivWithinAt (fun u : ℝ ↦ (q * u)⁻¹) (-q / (q * u) ^ 2) (Ioo 0 r) u :=
     (hasDerivAt_const_mul _).hasDerivWithinAt.fun_inv (mul_pos hq hu.1).ne'
   have h_inj : InjOn (fun u : ℝ ↦ (q * u)⁻¹) (Ioo 0 r) := fun u _ v _ h ↦ by simp_all [hq.ne']
   have h_invariant (u : ℝ) (hu : u ∈ Ioo 0 r) : |-q / (q * u) ^ 2| • f (q * u)⁻¹ = f u := by
     have hu_pos : 0 < u := hu.1
-    simp only [f, norm_thetaSeries_inv hχ_ne hχ_parity hχ hu_pos, neg_div, abs_neg, smul_eq_mul]
+    simp only [f, norm_gaussianTheta_inv hχ_ne hχ_parity hχ hu_pos, sqrt_inv, sqrt_mul hq.le,
+      neg_div, abs_neg, smul_eq_mul]
     rw [abs_of_pos (by positivity)]
-    field
+    field_simp
+    ring_nf
+    rw [sq_sqrt hq.le, sq_sqrt hu_pos.le]
+    ring
   have h_fold : ∫ u : ℝ in Ioi r, f u = ∫ u : ℝ in Ioc 0 r, f u := by
     rw [← image_inv_const_mul_Ioo hq hr h_fix,
       integral_image_eq_integral_abs_deriv_smul measurableSet_Ioo h_deriv h_inj,

@@ -16,7 +16,7 @@ import New.OneLift.ComparisonOperator.OneExchange
 /-!
 # Explicit real data: the exchange identity for a definite space with determinant data
 
-`New.Rows.exists_stdClassSum_eq_mul_integral_modKernel` follows from the identity
+`New.Rows.exists_mul_stdClassSum_eq_integral_modKernel` follows from the identity
 `New.Exchange.exchange_identity` for the positive definite standard space `I_a` of rank `card a`,
 with the real data made explicit as products of determinants.
 
@@ -32,10 +32,8 @@ explicit products of determinants.
   `New.realPairWeil`.
 * `New.Rows.exists_mul_apply_eq_apply_matchedPoly`: the matching of `New.Rows.stackedDetProd` with
   `New.Rows.matchedPoly`.
-* `New.Rows.exists_stdClassSum_eq_mul_integral_modKernel`: a multiple, possibly zero, of the class
-  sum equals a non-zero multiple of the integral over the group of the complementary space.
-* `New.Rows.exists_mul_stdClassSum_eq_integral_modKernel`: the same identity divided by its non-zero
-  constant, with the characters absorbed into the kernels and a free character for `I_a`.
+* `New.Rows.exists_mul_stdClassSum_eq_integral_modKernel`: a multiple of the class sum equals the
+  integral over the group of the complementary space, with a free character for `I_a`.
 
 Notions from other files:
 * `New.GInf`: The archimedean unitary group G_∞ for signs s: one copy of the complex unitary group
@@ -679,104 +677,6 @@ lemma exists_stdClassSum_eq_of_exchange (f : p ⊕ l ≃ b) (V' : Space E b (blo
   rw [hL, Prod.mk_one_one, mul_one] at h_match
   exact h_match
 
-/-- Explicit exchange of theta kernels. Index types stand for their cardinalities. Let `W` of rank
-`n` and `V'` of rank `b` both have `l` negative signs (`j : m ⊕ l ≃ n` and `f : p ⊕ l ≃ b` split
-their bases by sign), let `I_a` be the positive definite standard space, and let `n = b + a` (by
-`σ`), `a = b + 2 d` and `n = 2 l + 2 s₀` with `s₀ ≥ 1`; `e : p ⊕ a ≃ m` orders the columns of the
-determinants, of which `ι τ` indexes those at the place `τ`. The kernels carry the standard
-characters: `υ ^ l` for `W` and `V'`, and `1` for `I_a`, where `υ` is `upsilonU1`, the character of
-the Weil data on `U(1)`.
-
-There are numbers `C > 0` and `c'`, possibly `c' = 0`, such that every character `α` of weight
-`-card (ι τ)` that is tamely ramified exactly at the places of `𝔪 ≠ 1`, with character `χ` of the
-residue ring, has a number `c` with (a) and (b). (a) `‖c‖² = C * lValueProd 𝔪.places ν⁻¹ d ≠ 0` for
-`ν = α / υ ^ s₀`. Here `lValueProd 𝔪.places μ d`, for a character `μ`, is the norm factor
-`(∏_{w ∣ 𝔪} Nw) ^ (d ^ 2)` times `∏_{1 ≤ z ≤ d} |L^S(z, μ)| ^ 2`, where `L^S(z, μ)` is the Euler
-product at `z` of the base change of `μ` outside the places `S` of `𝔪` and their conjugates.
-(b) For all matrices `η`, all `g` and all matched functions `Φ`, `Ψ` for `χ⁻¹` (`AreMatched`: for
-invertible `k` modulo `𝔪` they vanish off the rows `a` of `k⁻¹` and the columns `b` of `k`
-respectively, with `Φ = χ⁻¹ (det k) Ψ` there), the number `c'` times the class sum at the level
-`stdLevel E a` over finite points `h` of `U(I_a)` of `α (det h)` times the kernel of `(W, I_a)` with
-data `Φ`, `stackedDetProd e η` (read in the variables `a × n` through `j`) equals `c α (det g)`
-times the integral over `x` in `U(V')` of `α (det x)⁻¹` times the kernel of `(V', W)` with data `Ψ`,
-`matchedPoly f j η`. The first polynomial is the product of the determinants of `η τ k` stacked over
-the `a × m` matrix of variables; the second is the product of the `det (η τ k * y_τ)`, for `y_τ` the
-`m × p` block of variables with positive signs, and of powers of the determinants of the `l × l`
-blocks with negative signs. -/
-theorem exists_stdClassSum_eq_mul_integral_modKernel (j : m ⊕ l ≃ n) (W : Space E n (blockSigns j))
-    (f : p ⊕ l ≃ b) (V' : Space E b (blockSigns f)) (σ : b ⊕ a ≃ n) (e : p ⊕ a ≃ m)
-    {d s₀ : ℕ} (hd : card a = card b + 2 * d)
-    (hs₀ : card n = 2 * card l + 2 * s₀) (hs₀_pos : 1 ≤ s₀)
-    (ι : InfinitePlace E → Type) [∀ τ : InfinitePlace E, Fintype (ι τ)] :
-    ∃ C : ℝ, 0 < C ∧ ∃ c' : ℂ,
-      ∀ {𝔪 : Modulus E} {α : AutChar E} {χ : MulChar 𝔪.ResidueRing ℂ},
-      IsTameFor 𝔪 α (fun τ : InfinitePlace E ↦ -card (ι τ)) χ →
-      ∃ c : ℂ,
-        -- (a) the size of `c`
-        ‖c‖ ^ 2 = C * lValueProd 𝔪.places (α / upsilonU1 ^ s₀)⁻¹ d ∧
-        C * lValueProd 𝔪.places (α / upsilonU1 ^ s₀)⁻¹ d ≠ 0 ∧
-        -- (b) the class sum for `I_a` against the integral over the group of `V'`
-        ∀ (η : (τ : InfinitePlace E) → ι τ → Matrix p m ℂ) (g : G E (blockSigns j))
-          (Φ : Matrix a n 𝔪.ResidueRing → ℂ) (Ψ : Matrix n b 𝔪.ResidueRing → ℂ),
-            AreMatched ⊤ σ χ⁻¹ Φ Ψ →
-          c' * stdClassSum (stdLevel E a) (fun h : Gf E a ↦
-              α.val (detFin (1 : a → ℤˣ) h) *
-                modKernelStdSpace W (upsilonU1 ^ card l) 1 𝔪 Φ
-                  (renameRowsCols id (j ∘ Sum.inl) (stackedDetProd e η)) g h) =
-            c * α.val g.det *
-              ∫ x : G E (blockSigns f),
-                (α.val x.det : ℂ)⁻¹ *
-                  modKernel V' W (upsilonU1 ^ card l) (upsilonU1 ^ card l) 𝔪 Ψ
-                    (matchedPoly f j η) x g ∂V'.quotMeasure := by
-  -- The exchange identity for the polynomial `Q₀` of `exists_stdClassSum_eq_of_exchange` gives `C`,
-  -- a real datum `v` and `c`. That lemma moves it from `v`, `Q₀` to the products of determinants,
-  -- at the cost of the factor `c'`.
-  classical
-  have h_card : card n = card b + card a := by rw [← card_congr σ, card_sum]
-  have h_neg : negCount (blockSigns j) = card l := by simp [negCount]
-  have h_nonempty : Nonempty a := card_pos_iff.1 (by omega)
-  obtain ⟨Q₀, h_transfer⟩ := exists_stdClassSum_eq_of_exchange f V' σ e j W ι
-  obtain ⟨C, hC, v, -, h_exch⟩ :=
-    exchange_identity W (stdSpace E a) V' σ (by simp [negCount]) hd
-      (μ := fun τ : InfinitePlace E ↦ card (ι τ) + s₀) (by omega) (fun τ ↦ by omega)
-      fun k : ℕ ↦ fockMoment_polyVector_ne_top k Q₀
-  obtain ⟨c', hc'⟩ := h_transfer v
-  refine ⟨C, hC, c', fun {𝔪 α χ} hα ↦ ?_⟩
-  set ν : AutChar E := α / upsilonU1 ^ s₀ with hν
-  have h_tame_inv : IsTameFor 𝔪 ν⁻¹ (fun τ : InfinitePlace E ↦ card (ι τ) + s₀) χ⁻¹ := by
-    rw [hν, inv_div, div_eq_inv_mul]
-    simpa [Pi.add_def, Pi.neg_def] using hα.inv.mul (hasWeight_upsilonU1_pow s₀)
-  obtain ⟨c, hc_norm, h_size_ne, hc⟩ := h_exch 𝔪 ν⁻¹ χ⁻¹ h_tame_inv
-  refine ⟨c, hc_norm, h_size_ne, fun η g Φ Ψ h_matched ↦ ?_⟩
-  -- In the exchange identity `W` and `V'` have the character `γ = υ ^ l α`, and `I_a` has `1`.
-  set γ : AutChar E := upsilonU1 ^ card l * α with hγ
-  have h_tame : IsTameFor 𝔪 γ (fun τ : InfinitePlace E ↦ card l - card (ι τ)) χ := by
-    rw [hγ, mul_comm]
-    simpa [Pi.add_def, neg_add_eq_sub] using hα.mul (hasWeight_upsilonU1_pow (card l))
-  have h_rank : rankTwist ν⁻¹⁻¹ n = γ := by
-    rw [inv_inv, rankTwist, show card n / 2 = s₀ + card l by omega, pow_add, ← mul_assoc, hν,
-      div_mul_cancel, mul_comm]
-  have h_split : (1 : AutChar E).spaceChar (card a) * γ.spaceChar (card b) = ν⁻¹.baseChange⁻¹ := by
-    rw [← map_inv, ← spaceChar_rankTwist (n := n) ⟨card l + s₀, by omega⟩, h_rank, h_card]
-    simp [AutChar.spaceChar, pow_add, mul_comm (υ ^ card a)⁻¹, mul_assoc]
-  have h_exchange (y : G E (blockSigns j)) :
-      thetaIntegral W (stdSpace E a) γ 1 (modDatum W (stdSpace E a) 𝔪 Φ v) y =
-        c * ∫ x : G E (blockSigns f), modKernel V' W γ γ 𝔪 Ψ Q₀ x y ∂V'.quotMeasure := by
-    simpa only [h_rank, modKernel] using hc 1 γ h_split Φ Ψ h_matched y
-  -- Twisting the standard characters by `α` multiplies the kernels by values of `α`.
-  have h_left (Q : MvPolynomial (InfinitePlace E × a × n) ℂ) (h : Gf E a) :
-      α.val (detFin (1 : a → ℤˣ) h) * modKernelStdSpace W (upsilonU1 ^ card l) 1 𝔪 Φ Q g h =
-        modKernelStdSpace W γ 1 𝔪 Φ Q g h := by
-    simpa using (modKernel_twist W (stdSpace E a) (upsilonU1 ^ card l) 1 𝔪 α 1 Φ Q g (1, h)).symm
-  have h_right (Q : MvPolynomial (InfinitePlace E × n × b) ℂ) (x : G E (blockSigns f)) :
-      α.val g.det * ((α.val x.det : ℂ)⁻¹ *
-          modKernel V' W (upsilonU1 ^ card l) (upsilonU1 ^ card l) 𝔪 Ψ Q x g) =
-        modKernel V' W γ γ 𝔪 Ψ Q x g := by
-    rw [modKernel_twist, div_eq_mul_inv, mul_assoc]
-  rw [mul_assoc c, ← integral_const_mul]
-  simp only [h_left, h_right]
-  exact hc' h_tame h_matched c h_exchange η g
-
 /-- Index types stand for their cardinalities. Let `W` of rank `n` and `V'` of rank `b` both have
 `l` negative signs, let `I_a` be the positive definite standard space, and let `n = b + a` (by `σ`),
 `a = b + 2 d` and `2 l + 2 ≤ n`; `e : p ⊕ a ≃ m` orders the columns of the determinants. The finite
@@ -814,50 +714,60 @@ lemma exists_mul_stdClassSum_eq_integral_modKernel {s : n → ℤˣ} (W : Space 
                 h) =
             ∫ x : G E (blockSigns f),
               modKernel V' W (α / β) α 𝔪 Ψ (matchedPoly f j η) x g ∂V'.quotMeasure := by
-  -- Apply `exists_stdClassSum_eq_mul_integral_modKernel` to `α₀ = α / υ ^ l` and divide by `c₀`;
-  -- both kernels differ from the standard ones by values of `α₀` and by `β (det g)⁻¹`.
   subst hj
   have h_card : card n = card b + card a := by rw [← card_congr σ, card_sum]
-  obtain ⟨s₀, hs₀⟩ : ∃ s₀ : ℕ, card b + d = s₀ + card l := ⟨card b + d - card l, by omega⟩
-  obtain ⟨C, -, c', h_data⟩ :=
-    exists_stdClassSum_eq_mul_integral_modKernel j W f V' σ e hd (s₀ := s₀) (by omega) (by omega) ι
+  have h_neg : negCount (blockSigns j) = card l := by simp [negCount]
+  have h_half : card n / 2 = card b + d := by lia
+  have h_even : 2 ∣ card n := ⟨card b + d, by lia⟩
+  have h_nonempty : Nonempty a := card_pos_iff.1 (by lia)
+  let s₀ := card b + d - card l
+  have h_s₀ : card b + d = s₀ + card l := by
+    dsimp [s₀]
+    lia
+  have h_s₀_int : (card b : ℤ) + d = (s₀ : ℤ) + card l := by exact_mod_cast h_s₀
+  obtain ⟨Q₀, h_transfer⟩ := exists_stdClassSum_eq_of_exchange f V' σ e j W ι
+  obtain ⟨C, -, v, -, h_exch⟩ :=
+    exchange_identity W (stdSpace E a) V' σ (by simp [negCount]) hd
+      (μ := fun τ : InfinitePlace E ↦ card (ι τ) + s₀) (by simpa [h_neg] using hn)
+      (fun τ ↦ by rw [h_neg]; lia) fun k : ℕ ↦ fockMoment_polyVector_ne_top k Q₀
+  obtain ⟨c', hc'⟩ := h_transfer v
   refine ⟨‖c'‖ ^ 2 / C, fun {𝔪 α χ} hα ↦ ?_⟩
-  obtain ⟨α₀, rfl⟩ : ∃ α₀, α = upsilonU1 ^ card l * α₀ := ⟨_, (mul_inv_cancel_left _ α).symm⟩
-  have h_tame : IsTameFor 𝔪 α₀ (fun τ : InfinitePlace E ↦ -card (ι τ)) χ := by
-    -- Multiplying `α` by `υ ^ (-l)` lowers its weight by `l` and leaves the tame part.
-    simpa [Pi.add_def, sub_add_eq_add_sub, zpow_neg, mul_comm (upsilonU1 ^ card l) α₀] using
-      hα.mul (hasWeight_upsilonU1_zpow (-card l))
-  obtain ⟨c₀, hc₀_norm, h_size_ne, hc₀⟩ := h_data h_tame
-  have h_char : (upsilonU1 ^ card l * α₀)⁻¹ * upsilonU1 ^ (card b + d) =
-      (α₀ / upsilonU1 ^ s₀)⁻¹ := by
-    rw [hs₀, pow_add, inv_div, mul_inv, mul_comm (upsilonU1 ^ s₀), mul_mul_mul_comm,
-      inv_mul_cancel, one_mul, div_eq_inv_mul]
+  -- Choose the exchange character so that the rank twist of its inverse is α.
+  let ν : AutChar E := α⁻¹ * upsilonU1 ^ (card b + d)
+  have h_weight :
+      (-(fun τ : InfinitePlace E ↦ (card l : ℤ) - card (ι τ)) +
+        (fun _ ↦ ((card b + d : ℕ) : ℤ))) = fun τ ↦ (card (ι τ) : ℤ) + s₀ := by
+    funext τ
+    simp only [Pi.neg_apply, Pi.add_apply, Nat.cast_add]
+    lia
+  have h_tame : IsTameFor 𝔪 ν (fun τ : InfinitePlace E ↦ card (ι τ) + s₀) χ⁻¹ := by
+    simpa only [ν, h_weight] using hα.inv.mul (hasWeight_upsilonU1_pow (card b + d))
+  have h_rank : rankTwist ν⁻¹ n = α := by
+    rw [rankTwist, h_half, show ν⁻¹ = α / upsilonU1 ^ (card b + d) by
+      simp [ν, div_eq_mul_inv, mul_comm], div_mul_cancel]
+  have h_split : (1 : AutChar E).spaceChar (card a) * α.spaceChar (card b) = ν.baseChange⁻¹ := by
+    rw [spaceChar_mul_spaceChar_eq_iff (h_card.trans (Nat.add_comm _ _)) h_even, one_mul, h_rank]
+  obtain ⟨c₀, hc₀_norm, h_size_ne, hc₀⟩ := h_exch 𝔪 ν χ⁻¹ h_tame
   have hc₀_ne : c₀ ≠ 0 := fun h_zero ↦ h_size_ne (hc₀_norm.symm.trans (by simp [h_zero]))
   refine ⟨c' / c₀, ?_, fun η Φ Ψ h_matched β g ↦ ?_⟩
-  · rw [norm_div, div_pow, hc₀_norm, div_div, h_char]
+  · rw [norm_div, div_pow, hc₀_norm, div_div]
+  have h_exchange (y : G E (blockSigns j)) :
+      thetaIntegral W (stdSpace E a) α 1 (modDatum W (stdSpace E a) 𝔪 Φ v) y =
+        c₀ * ∫ x : G E (blockSigns f), modKernel V' W α α 𝔪 Ψ Q₀ x y ∂V'.quotMeasure := by
+    simpa only [h_rank, modKernel] using hc₀ 1 α h_split Φ Ψ h_matched y
+  -- The free character β contributes the same scalar on both sides.
   have h_left (Q : MvPolynomial (InfinitePlace E × a × n) ℂ) (h : Gf E a) :
-      modKernelStdSpace W (upsilonU1 ^ card l * α₀) β 𝔪 Φ Q g h =
-        (β.val g.det : ℂ)⁻¹ *
-          (α₀.val (detFin (1 : a → ℤˣ) h) * modKernelStdSpace W (upsilonU1 ^ card l) 1 𝔪 Φ Q g
-            h) := by
-    simpa [div_eq_inv_mul, mul_assoc] using
-      modKernel_twist W (stdSpace E a) (upsilonU1 ^ card l) 1 𝔪 α₀ β Φ Q g (1, h)
+      modKernelStdSpace W α β 𝔪 Φ Q g h =
+        (β.val g.det : ℂ)⁻¹ * modKernelStdSpace W α 1 𝔪 Φ Q g h := by
+    simpa using modKernel_twist W (stdSpace E a) α 1 𝔪 1 β Φ Q g (1, h)
   have h_right (Q : MvPolynomial (InfinitePlace E × n × b) ℂ) (x : G E (blockSigns f)) :
-      modKernel V' W (upsilonU1 ^ card l * α₀ / β) (upsilonU1 ^ card l * α₀) 𝔪 Ψ Q x g =
-        (β.val g.det : ℂ)⁻¹ * α₀.val g.det * ((α₀.val x.det : ℂ)⁻¹ *
-          modKernel V' W (upsilonU1 ^ card l) (upsilonU1 ^ card l) 𝔪 Ψ Q x g) := by
-    rw [mul_div_assoc, modKernel_twist, div_eq_mul_inv]
-    simp [div_eq_inv_mul, mul_assoc]
+      modKernel V' W (α / β) α 𝔪 Ψ Q x g =
+        (β.val g.det : ℂ)⁻¹ * modKernel V' W α α 𝔪 Ψ Q x g := by
+    simpa [div_eq_mul_inv, circleChar_inv_apply] using
+      modKernel_twist V' W α α 𝔪 β⁻¹ 1 Ψ Q x g
   simp only [h_left, h_right, ← mul_classSum, integral_const_mul]
-  -- By `hc₀` the class sum, times `c'`, is `c₀ α₀ (det g)` times the integral, and `c₀` cancels.
-  calc
-    _ = (β.val g.det : ℂ)⁻¹ / c₀ * (c' * classSum (stdSpace E a).Γf (stdLevel E a) fun h : Gf E a ↦
-          α₀.val (detFin (1 : a → ℤˣ) h) * modKernelStdSpace W (upsilonU1 ^ card l) 1 𝔪 Φ
-            (renameRowsCols id (j ∘ Sum.inl) (stackedDetProd e η)) g h) := by ring
-    _ = (β.val g.det : ℂ)⁻¹ / c₀ * (c₀ * α₀.val g.det * ∫ x : G E (blockSigns f),
-          (α₀.val x.det : ℂ)⁻¹ * modKernel V' W (upsilonU1 ^ card l) (upsilonU1 ^ card l) 𝔪 Ψ
-            (matchedPoly f j η) x g ∂V'.quotMeasure) := by rw [hc₀ η g Φ Ψ h_matched]
-    _ = _ := by field_simp
+  rw [mul_left_comm (c' / c₀), div_mul_eq_mul_div, hc' hα h_matched c₀ h_exchange η g,
+    mul_div_cancel_left₀ _ hc₀_ne]
 
 /-- Let `b` be empty, so that `σ` identifies `a` with `n`. The functions `χ ∘ det` on `a × n`
 matrices and `1` on `n × b` matrices are matched functions for `χ⁻¹` (`AreMatched`): they live on

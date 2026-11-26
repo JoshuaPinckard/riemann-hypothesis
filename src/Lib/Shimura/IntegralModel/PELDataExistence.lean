@@ -182,16 +182,11 @@ lemma exists_cmBase_restrict_ne {d : ℕ} {E : Type} [Field E] [NumberField E] [
   classical
   let i : QuadField d →+* E := algebraMap (QuadField d) E
   -- Conjugate `v.embedding` exactly when its restriction to `QuadField d` is on the wrong side.
-  use { v₀ := mk σ, mk_Φ := ?_
-        Φ v := if (v.embedding.comp i = σ.comp i ↔ v ≠ mk σ) then star v.embedding
-          else v.embedding }
-  · -- `Φ v₀ = σ`, and at `v ≠ v₀` the chosen embedding restricts differently from `σ`;
-    -- `dsimp +instances` unfolds `Φ` and `v₀` of the CM type just built, which is an instance
-    dsimp +instances
-    grind [mk_embedding, mk_eq_iff, ComplexEmbedding.conjugate_comp]
-  · -- Conjugating an embedding does not change its place (`dsimp +instances` as above).
-    dsimp +instances
-    grind [mk_embedding, mk_eq_iff]
+  let emb (v : InfinitePlace E) : E →+* ℂ :=
+    if (v.embedding.comp i = σ.comp i ↔ v ≠ mk σ) then star v.embedding else v.embedding
+  refine ⟨{ v₀ := mk σ, Φ := emb, mk_Φ v := by grind [mk_embedding, mk_eq_iff] }, ?_⟩
+  change emb (mk σ) = σ ∧ ∀ v : InfinitePlace E, v ≠ mk σ → (emb v).comp i ≠ (emb (mk σ)).comp i
+  grind [mk_embedding, mk_eq_iff, ComplexEmbedding.conjugate_comp]
 
 /-- On integers, the map `𝓞 (QuadField d) → 𝓞 E` induced by the inclusion is the algebra map. -/
 private lemma mapRingHom_algebraMap_eq {d : ℕ} {E : Type} [Field E] [NumberField E]

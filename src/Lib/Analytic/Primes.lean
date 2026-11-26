@@ -83,7 +83,7 @@ end TotientBound
 
 section AuxiliaryPrimes
 
-open ArithmeticFunction DirichletCharacter Complex Set Filter MeasureTheory LSeries Finset Real
+open ArithmeticFunction DirichletCharacter Complex Set Filter LSeries Finset Real
   Topology vonMangoldt Chebyshev Polynomial ZMod MulChar
 
 /-- If `4 ∣ M` and `2 ≤ k`, a character mod `M ^ k` whose square is trivial factors through modulus
@@ -158,7 +158,7 @@ lemma New.eventually_norm_logDeriv_entireL_le_near_one (A : ℕ) {M : ℕ} [NeZe
   have hl_pow : 0 < l ^ 25 := pow_pos (by linarith) 25
   replace h_pow : 2 * l ^ 25 ≤ X := (le_abs_self _).trans (h_pow.trans_eq (abs_of_pos hX_pos))
   have h_exp : rexp l = X ^ A * X := by
-    rw [l_def, Real.exp_nat_mul, Real.exp_log hX_pos, pow_succ]
+    rw [l_def, Real.exp_natCast_mul, Real.exp_log hX_pos, pow_succ]
   have h_one : 1 ≤ X ^ A := one_le_pow₀ (by linarith)
   have h_re_lower : 1 - 1 / l ^ 25 ≤ s.re := by
     have h_inv_le : X⁻¹ ≤ 1 / l ^ 25 := by
@@ -187,207 +187,7 @@ lemma New.norm_term_le_exp_mul (a : ℕ → ℂ) {z : ℂ} (σ E : ℝ) {n : ℕ
     simp [hn, ↓cpow_add, cpow_def, norm_exp, field, mul_sub, Real.exp_sub, ← natCast_log]
   grw [h_eq, h_le]
 
-/-- The Dirichlet series of the function that is `Λ n` at the numbers `n` that are not prime and
-`0` at the primes converges absolutely at `3 / 4 = 1 + -4⁻¹`, because Chebyshev's functions satisfy
-`ψ - θ = O(√x)`. -/
-lemma New.summable_vonMangoldt_not_prime : Summable fun n : ℕ ↦
-    ‖term (fun m : ℕ ↦ ((if m.Prime then 0 else vonMangoldt m : ℝ) : ℂ)) (1 + -4⁻¹) n‖ := by
-  have h_bigO : (fun n : ℕ ↦ ∑ m ∈ Finset.Icc 1 n, if m.Prime then 0 else vonMangoldt m) =O[atTop]
-      fun n : ℕ ↦ (n : ℝ) ^ (2⁻¹ : ℝ) := by
-    simpa [Function.comp_def, psi_sub_theta_eq_sum_not_prime, sum_filter, sqrt_eq_rpow,
-      ← Finset.Icc_add_one_left_eq_Ioc] using isBigO_psi_sub_theta_sqrt.natCast_atTop
-  exact (LSeriesSummable_of_sum_norm_bigO_and_nonneg h_bigO
-    (fun m ↦ by split_ifs <;> simp [vonMangoldt_nonneg]) (by simp) (by norm_num)).norm
-
-/-- For `0 < re z` the Dirichlet series of `Λ` on the class `1` mod `q` has at `1 + z` the sum
-`(1 - z * ∑ χ, L_χ'/L_χ (1 + z)) / φ(q) / z`. Here `L_χ = entireL χ` is `L(s, χ)` with the pole
-removed. -/
-lemma New.hasSum_residueClass_one (q : ℕ) [NeZero q] {z : ℂ} (hz : 0 < z.re) :
-    LSeriesHasSum (fun n : ℕ ↦ residueClass (1 : ZMod q) n) (1 + z)
-      ((1 - z * ∑ χ : DirichletCharacter ℂ q, logDeriv (entireL χ) (1 + z)) / q.totient / z) := by
-  -- Use orthogonality of characters; the pole term `1 / z` comes from `χ = 1`.
-  have h_re : 1 < (1 + z).re := by simpa using hz
-  have h_coeff : (fun n : ℕ ↦ (residueClass (1 : ZMod q) n : ℂ)) =
-      (q.totient : ℂ)⁻¹ • ∑ χ : DirichletCharacter ℂ q, fun n : ℕ ↦ χ n * vonMangoldt n := by
-    ext n
-    simp [residueClass_apply]
-  have h_value : (1 - z * ∑ χ : DirichletCharacter ℂ q, logDeriv (entireL χ) (1 + z)) / q.totient /
-      z = (q.totient : ℂ)⁻¹ * ∑ χ : DirichletCharacter ℂ q,
-        ((if χ = 1 then 1 else 0) / (1 + z - 1) - logDeriv (entireL χ) (1 + z)) := by
-    simp [ite_div]
-    field_simp [ne_zero_of_re_pos hz]
-  rw [h_coeff, h_value]
-  exact (LSeriesHasSum.sum fun χ _ ↦ LSeriesHasSum_mul_vonMangoldt χ h_re).smul _
-
-/-- There are `φ(q) ≥ 1` characters mod `q`, so `‖1 - ∑ χ, z * c χ‖ ≤ 2 φ(q)` if each term of the
-sum has norm at most `1`. -/
-lemma New.norm_one_sub_mul_sum_div_totient_le {q : ℕ} [NeZero q] {z : ℂ}
-    {c : DirichletCharacter ℂ q → ℂ} (hc : ∀ χ : DirichletCharacter ℂ q, ‖z * c χ‖ ≤ 1) :
-    ‖(1 - z * ∑ χ : DirichletCharacter ℂ q, c χ) / q.totient‖ ≤ 2 := by
-  have h_pos : 1 ≤ (q.totient : ℝ) := mod_cast Nat.totient_pos.2 (NeZero.pos q)
-  have h_sum : ∑ χ : DirichletCharacter ℂ q, ‖z * c χ‖ ≤ q.totient := by
-    grw [sum_le_card_nsmul _ _ 1 fun χ _ ↦ hc χ]
-    simp [← card_eq_totient_of_hasEnoughRootsOfUnity ℂ]
-  rw [norm_div, Complex.norm_natCast, div_le_iff₀ (by linarith), mul_sum]
-  grw [norm_sub_le, norm_sum_le, norm_one]
-  linarith
-
-/-- On the circle `‖z‖ = 1 / X` the real part of `2 - U z - X (1 + X z)² / 4`, the exponent in
-Newman's method, is at least (in fact equal to) that of `2 - (U + t) z` for some `t ∈ [0, X ^ 2]`,
-namely `t = X ^ 2 / 2 * (1 + X * re z)`: the quadratic term acts as a shift of `U` by `t`. -/
-lemma New.exists_shift_le_re_exponent (U : ℝ) {X : ℝ} (hX : 0 < X) {z : ℂ} (hz : ‖z‖ = X⁻¹) :
-    ∃ t : ℝ, 0 ≤ t ∧ t ≤ X ^ 2 ∧
-      2 - (U + t) * z.re ≤ (2 - U * z - 4⁻¹ * X * (1 + X * z) ^ 2 : ℂ).re := by
-  refine ⟨X ^ 2 / 2 * (1 + X * z.re), ?_⟩
-  obtain ⟨h_lower, h_upper⟩ : -1 ≤ X * z.re ∧ X * z.re ≤ 1 := by
-    rw [← abs_le, abs_mul, abs_of_pos hX]
-    grw [z.abs_re_le_norm, hz, mul_inv_cancel₀ hX.ne']
-  have h_im : X ^ 2 * z.im ^ 2 = 1 - (X * z.re) ^ 2 := by
-    rw [← z.sq_norm_sub_sq_re, hz]
-    field_simp
-  have h_exponent : (2 - U * z - 4⁻¹ * X * (1 + X * z) ^ 2 : ℂ).re =
-      2 - U * z.re - X / 4 * ((1 + X * z.re) ^ 2 - X ^ 2 * z.im ^ 2) := by simp [sq]; ring
-  refine ⟨mul_nonneg (by positivity) (by linarith), by nlinarith, le_of_eq ?_⟩
-  linear_combination -h_exponent - X / 4 * h_im
-
-section Circle
-
-variable {a : ℕ → ℝ} {b : ℕ → ℂ} {F : ℂ → ℂ} {X U C : ℝ}
-
-/-- Let `a ≥ 0` have the Dirichlet series `F z / z` at `1 + z` for `0 < re z`, with `‖F‖ ≤ 2` on
-`‖z‖ ≤ 1 / X`, and let the series of `b` at `3 / 4` have absolute sum `C ≤ X`, where `200 ≤ X` and
-`X² ≤ U`. If on a set of `n` the terms of the series of `a` at `1 + z` are at most `e ^ E` times
-the sum of those of `a` at `1 + 1 / U` and those of `b` at `3 / 4`, then this part of the series is
-at most `3 U e ^ E`. -/
-lemma New.norm_le_of_term_le_majorant (ha : ∀ n : ℕ, 0 ≤ a n)
-    (h_series : ∀ z : ℂ, 0 < z.re → LSeriesHasSum (fun n : ℕ ↦ (a n : ℂ)) (1 + z) (F z / z))
-    (hF : ∀ z : ℂ, ‖z‖ ≤ X⁻¹ → ‖F z‖ ≤ 2) (hC : HasSum (fun n : ℕ ↦ ‖term b (1 + -4⁻¹) n‖) C)
-    (hCX : C ≤ X) (hX : 200 ≤ X) (hU : X ^ 2 ≤ U) {z S : ℂ} {E : ℝ} {s : Set ℕ}
-    (hS : HasSum (fun n : s ↦ term (fun n : ℕ ↦ (a n : ℂ)) (1 + z) n) S)
-    (h_le : ∀ n ∈ s, ‖term (fun n : ℕ ↦ (a n : ℂ)) (1 + z) n‖ ≤
-      rexp E * (‖term (fun n : ℕ ↦ (a n : ℂ)) (1 + (U⁻¹ : ℝ)) n‖ + ‖term b (1 + -4⁻¹) n‖)) :
-    ‖S‖ ≤ rexp E * (3 * U) := by
-  -- The whole series of `a` at `1 + 1 / U` is `U F (1 / U) ≤ 2 U`.
-  have hXU : X ≤ U := by nlinarith
-  have hU_pos : 0 < U := by linarith
-  have hX_pos' : 0 < X := by linarith
-  have h_norm : HasSum (fun n : ℕ ↦ (‖term (fun n : ℕ ↦ (a n : ℂ)) (1 + (U⁻¹ : ℝ)) n‖ : ℂ))
-      (F (U⁻¹ : ℝ) / (U⁻¹ : ℝ)) := by
-    refine (h_series _ (by simpa using hU_pos)).congr_fun fun n ↦ ?_
-    -- The order on `ℂ` is not in scope, so the two facts `0 ≤ _` in `ℂ` are left to `mod_cast`.
-    exact norm_of_nonneg' (mod_cast term_nonneg (mod_cast ha n) (1 + U⁻¹))
-  have h_total : (F (U⁻¹ : ℝ) / (U⁻¹ : ℝ)).re ≤ 2 * U := by
-    have h_abs : ‖((U⁻¹ : ℝ) : ℂ)‖ = U⁻¹ := by simp [hU_pos.le]
-    grw [re_le_norm, norm_div, hF _ (h_abs.trans_le (inv_anti₀ hX_pos' hXU)), h_abs, div_inv_eq_mul]
-  have h_part : HasSum (s.indicator (term (fun n : ℕ ↦ (a n : ℂ)) (1 + z))) S :=
-    hasSum_subtype_iff_indicator.1 hS
-  have h_bound (n : ℕ) : ‖s.indicator (term (fun n : ℕ ↦ (a n : ℂ)) (1 + z)) n‖ ≤
-      rexp E * (‖term (fun n : ℕ ↦ (a n : ℂ)) (1 + (U⁻¹ : ℝ)) n‖ + ‖term b (1 + -4⁻¹) n‖) := by
-    rw [norm_indicator_eq_indicator_norm]
-    exact indicator_le' h_le (fun _ _ ↦ by positivity) n
-  calc
-    ‖S‖ ≤ rexp E * ((F (U⁻¹ : ℝ) / (U⁻¹ : ℝ)).re + C) :=
-      h_part.norm_le_of_bounded (((hasSum_re h_norm).add hC).mul_left _) h_bound
-    _ ≤ rexp E * (3 * U) := by
-      gcongr
-      linarith
-
-/-- The bound on the circle in Newman's method. Let `a ≥ 0` have the Dirichlet series `F z / z` at
-`1 + z` for `0 < re z` (here `term a s n` is the summand `a n / n ^ s`), with `‖F‖ ≤ 2` on
-`‖z‖ ≤ 1 / X`. Let the series of `b` at `3 / 4` have absolute sum `C ≤ X`, let `200 ≤ X` and
-`X² ≤ U`, and let `|a n| ≤ |b n|` whenever `log n` lies in `[U, U + X²]`. Then on `‖z‖ = 1 / X` we
-have `‖F z - z P z‖ ≤ 3 U e ^ E`, where `P z` is the part with `n < e ^ U` of the series of `a`
-and `E` is the real part of `2 - U z - X (1 + X z)² / 4`. -/
-lemma New.norm_sub_mul_sum_term_le (ha : ∀ n : ℕ, 0 ≤ a n)
-    (h_series : ∀ z : ℂ, 0 < z.re → LSeriesHasSum (fun n : ℕ ↦ (a n : ℂ)) (1 + z) (F z / z))
-    (hF : ∀ z : ℂ, ‖z‖ ≤ X⁻¹ → ‖F z‖ ≤ 2) (hC : HasSum (fun n : ℕ ↦ ‖term b (1 + -4⁻¹) n‖) C)
-    (hCX : C ≤ X) (hX : 200 ≤ X) (hU : X ^ 2 ≤ U)
-    (h_window : ∀ n : ℕ, Real.log n ∈ Set.Icc U (U + X ^ 2) → ‖(a n : ℂ)‖ ≤ ‖b n‖) {z : ℂ}
-    (hz : ‖z‖ = X⁻¹) :
-    ‖F z - z * ∑ n ∈ .range ⌈rexp U⌉₊, term (fun n : ℕ ↦ (a n : ℂ)) (1 + z) n‖ ≤
-      rexp (2 - U * z - 4⁻¹ * X * (1 + X * z) ^ 2 : ℂ).re * (3 * U) := by
-  have hX_pos : 0 < X := by linarith
-  have hU_pos : 0 < U := (pow_pos hX_pos 2).trans_le hU
-  have hz_small : ‖z‖ ≤ 200⁻¹ := hz.trans_le (inv_anti₀ (by simp) hX)
-  set E : ℝ := (2 - U * z - 4⁻¹ * X * (1 + X * z) ^ 2 : ℂ).re
-  set P : ℂ := ∑ n ∈ .range ⌈rexp U⌉₊, term (fun n : ℕ ↦ (a n : ℂ)) (1 + z) n
-  -- On the circle the Gaussian factor shifts the cut from `U` to a point `U + t` of the window.
-  obtain ⟨t, ht_nonneg, ht_le, hE⟩ : ∃ t : ℝ, 0 ≤ t ∧ t ≤ X ^ 2 ∧ 2 - (U + t) * z.re ≤ E :=
-    exists_shift_le_re_exponent U hX_pos hz
-  have h_unit : U * U⁻¹ = 1 := mul_inv_cancel₀ hU_pos.ne'
-  have h_shift : t * U⁻¹ ≤ 1 := (div_le_one hU_pos).2 (ht_le.trans hU)
-  have h_term_le_sum {n : ℕ} (h : Real.log n * (U⁻¹ - z.re) ≤ E) :
-      ‖term (fun n : ℕ ↦ (a n : ℂ)) (1 + z) n‖ ≤ rexp E *
-        (‖term (fun n : ℕ ↦ (a n : ℂ)) (1 + (U⁻¹ : ℝ)) n‖ + ‖term b (1 + -4⁻¹) n‖) :=
-    (norm_term_le_exp_mul _ U⁻¹ E h).trans (by gcongr; simp)
-  rcases le_total z.re U⁻¹ with h_left | h_right
-  · -- If `re z ≤ 1 / U`, then `E ≥ 0`, and we bound `F` and the finite sum `P` separately.
-    have hU_re : U * z.re ≤ 1 := (mul_le_mul_of_nonneg_left h_left hU_pos.le).trans_eq h_unit
-    have ht_re : t * z.re ≤ 1 := (mul_le_mul_of_nonneg_left h_left ht_nonneg).trans h_shift
-    have hE_nonneg : 0 ≤ E := by linarith
-    have hP : ‖P‖ ≤ rexp E * (3 * U) := by
-      refine norm_le_of_term_le_majorant ha h_series hF hC hCX hX hU (Finset.hasSum ..) fun n hn ↦
-        h_term_le_sum ?_
-      have hn_lt : n < rexp U := Nat.lt_ceil.1 (mem_range.1 hn)
-      have h_log : Real.log n ≤ U := by
-        obtain rfl | hn_pos := n.eq_zero_or_pos
-        · simpa using hU_pos.le
-        · exact ((log_lt_iff_lt_exp (mod_cast hn_pos)).2 hn_lt).le
-      have h_exponent : Real.log n * (U⁻¹ - z.re) ≤ U * (U⁻¹ - z.re) :=
-        mul_le_mul_of_nonneg_right h_log (sub_nonneg.2 h_left)
-      linarith
-    calc
-      ‖F z - z * P‖ ≤ ‖F z‖ + ‖z‖ * ‖P‖ := by grw [norm_sub_le, norm_mul]
-      _ ≤ 2 + 200⁻¹ * (rexp E * (3 * U)) := by grw [hF z hz.le, hz_small, hP]
-      _ ≤ rexp E * (3 * U) := by nlinarith only [E.one_le_exp hE_nonneg, hU, hX]
-  · -- If `re z ≥ 1 / U`, then `F z - z P` is `z` times the tail `n ≥ e ^ U` of the series.
-    have h_pos : 0 < z.re := (inv_pos.2 hU_pos).trans_le h_right
-    have h_tail : ‖F z / z - P‖ ≤ rexp E * (3 * U) := by
-      refine norm_le_of_term_le_majorant ha h_series hF hC hCX hX hU
-        (s := {n | n ∉ Finset.range ⌈rexp U⌉₊})
-        ((Finset.hasSum_iff_compl _).1 (h_series z h_pos)) fun n hn ↦ ?_
-      have hn_ge : rexp U ≤ n := Nat.ceil_le.1 (not_lt.1 (mt Finset.mem_range.2 hn))
-      have h_log : U ≤ Real.log n := (le_log_iff_exp_le (U.exp_pos.trans_le hn_ge)).2 hn_ge
-      rcases le_total (Real.log n) (U + X ^ 2) with h_in | h_out
-      · -- In the window compare with the series of `b`.
-        have ht_re : t * z.re ≤ U * 200⁻¹ :=
-          mul_le_mul (ht_le.trans hU) (z.re_le_norm.trans hz_small) h_pos.le hU_pos.le
-        have h_exponent_le : Real.log n * (-4⁻¹ - z.re) ≤ E := by
-          have h_move : Real.log n * (-4⁻¹ - z.re) ≤ U * (-4⁻¹ - z.re) :=
-            mul_le_mul_of_nonpos_right h_log (by linarith)
-          linarith
-        grw [← norm_term_le (f := fun n : ℕ ↦ (a n : ℂ)) (g := b) _ (h_window n ⟨h_log, h_in⟩),
-          norm_term_le_exp_mul _ _ E h_exponent_le]
-        simp [exp_pos]
-      · -- Beyond the window we have `log n ≥ U + X² ≥ U + t`.
-        refine h_term_le_sum ?_
-        have h_move : Real.log n * (U⁻¹ - z.re) ≤ (U + t) * (U⁻¹ - z.re) :=
-          mul_le_mul_of_nonpos_right (by linarith) (sub_nonpos.2 h_right)
-        linarith
-    calc
-      ‖F z - z * P‖ = ‖z * (F z / z - P)‖ := by
-        rw [mul_sub, mul_div_cancel₀ _ (ne_zero_of_re_pos h_pos)]
-      _ ≤ rexp E * (3 * U) := by grw [norm_mul, h_tail, show ‖z‖ ≤ 1 by linarith, one_mul]
-
-end Circle
-
-/-- The function `F z - z P z` of Newman's method is analytic on a disc on which no
-`entireL χ (1 + z)` vanishes: here `F z = (1 - z * ∑ χ, L_χ'/L_χ (1 + z)) / φ(q)`, with
-`L_χ = entireL χ`, and `P z` is the part with `n < N` of the Dirichlet series at `1 + z` of `Λ` on
-the class `1` mod `q` (`residueClass`). -/
-lemma New.analyticOnNhd_sub_mul_sum_term (q : ℕ) [NeZero q] (N : ℕ) {r : ℝ}
-    (h_ne : ∀ z : ℂ, ‖z‖ ≤ r → ∀ χ : DirichletCharacter ℂ q, entireL χ (1 + z) ≠ 0) :
-    AnalyticOnNhd ℂ (fun z : ℂ ↦
-      (1 - z * ∑ χ : DirichletCharacter ℂ q, logDeriv (entireL χ) (1 + z)) / q.totient -
-        z * ∑ n ∈ .range N, term (fun n : ℕ ↦ (residueClass (1 : ZMod q) n : ℂ)) (1 + z) n)
-      (Metric.closedBall 0 r) := by
-  intro z hz
-  have hz_ne (χ : DirichletCharacter ℂ q) : entireL χ (1 + z) ≠ 0 := h_ne z (by simpa using hz) χ
-  have h_term (i : ℕ) : AnalyticAt ℂ
-      (fun s : ℂ ↦ term (fun n : ℕ ↦ (residueClass (1 : ZMod q) n : ℂ)) s i) (1 + z) :=
-    Differentiable.analyticAt (fun s ↦ (hasDerivAt_term _ i s).differentiableAt) _
-  fun_prop (disch := simp_all) [logDeriv]
-
+open scoped ComplexOrder in
 /-- Let `4 ∣ M` and let `A` be fixed. For all large `W` there is a prime `p ≡ 1` mod `M ^ k` with
 `U ≤ log p ≤ U + W`, whenever `1 < k`, `M ^ k ≤ W ^ A` and `W ≤ U ≤ W ^ A`. This is a consequence
 of the Siegel–Walfisz theorem, proved here directly by Newman's contour method. -/
@@ -399,46 +199,73 @@ theorem New.exists_prime_modEq_one_log_mem (M A : ℕ) [NeZero M] (hM : 4 ∣ M)
   -- `exp (2 - U z - X (1 + X z)² / 4)` is at most `3 U` on `‖z‖ = 1 / X`, yet of size
   -- `e ^ (X / 4 - 2) / φ(q)` at `0`.
   let b (n : ℕ) : ℂ := ↑(if n.Prime then 0 else vonMangoldt n : ℝ)
-  obtain ⟨C, hC⟩ : Summable fun n ↦ ‖term b (1 + -4⁻¹) n‖ := summable_vonMangoldt_not_prime
-  -- Take `X` large: `q, U ≤ X ^ (2 * A)`, so `3 * U * q ≤ 3 * X ^ (4 * A) < e ^ (X / 4 - 2)`.
-  -- The substitution `W = X ^ 2` turns "for large `W`" into "for large `X = √W`".
+  obtain ⟨C, hC⟩ : Summable fun n ↦ ‖term b (1 + -4⁻¹) n‖ := by
+    have h_bigO : (fun n : ℕ ↦ ∑ m ∈ Finset.Icc 1 n, if m.Prime then 0 else vonMangoldt m) =O[atTop]
+        fun n : ℕ ↦ (n : ℝ) ^ (2⁻¹ : ℝ) := by
+      simpa [Function.comp_def, psi_sub_theta_eq_sum_not_prime, sum_filter, sqrt_eq_rpow,
+        ← Finset.Icc_add_one_left_eq_Ioc] using isBigO_psi_sub_theta_sqrt.natCast_atTop
+    exact (LSeriesSummable_of_sum_norm_bigO_and_nonneg h_bigO
+      (fun m ↦ by split_ifs <;> simp [vonMangoldt_nonneg]) (by simp) (by norm_num)).norm
+  -- Take `X = √W` large: `q, U ≤ X ^ (2 * A)`, so `3 * U * q < e ^ (X / 4 - 2)`.
   rw [← comap_sqrt_atTop, eventually_comap]
   filter_upwards [eventually_norm_logDeriv_entireL_le_near_one (2 * A) hM,
     (tendsto_exp_mul_div_rpow_atTop ↑(4 * A) 4⁻¹ (by simp)).eventually_gt_atTop (.exp 2 * 3),
-    eventually_ge_atTop 200, eventually_ge_atTop C, eventually_gt_atTop 0] with
-    X h_free h_exp hX200 hXC hX W hW k hk hq U ⟨hWU, hU⟩
+    eventually_ge_atTop 200, eventually_ge_atTop C] with
+    X h_free h_exp hX200 hXC W hW k hk hq U ⟨hWU, hU⟩
+  have hX : 0 < X := by linarith
   obtain rfl : W = X ^ 2 := by rw [← hW, sq_sqrt (sqrt_pos.1 (hX.trans_eq hW.symm)).le]
   have hU_pos : 0 < U := (pow_pos hX 2).trans_le hWU
+  have hXU : X ≤ U := by nlinarith
   set q : ℕ := M ^ k
   simp only [← pow_mul, rpow_natCast, ← natCast_eq_natCast_iff, Nat.cast_one,
     Set.mem_Icc] at hq hU h_exp ⊢
   have hq_cast : (q : ℝ) ≤ X ^ (2 * A) := by simpa [q] using hq
+  have hq_tot : (1 : ℝ) ≤ q.totient := mod_cast Nat.totient_pos.2 (NeZero.pos q)
   let a (n : ℕ) : ℂ := residueClass (1 : ZMod q) n
   let F (z : ℂ) : ℂ :=
     (1 - z * ∑ χ : DirichletCharacter ℂ q, logDeriv (entireL χ) (1 + z)) / q.totient
-  have h_series (z : ℂ) (hz : 0 < z.re) : LSeriesHasSum a (1 + z) (F z / z) :=
-    hasSum_residueClass_one q hz
-  -- For `‖z‖ ≤ 1 / X` each `z * logDeriv (entireL χ)` has norm at most `1`, so `‖F‖ ≤ 2`.
+  have h_series (z : ℂ) (hz : 0 < z.re) : LSeriesHasSum a (1 + z) (F z / z) := by
+    have h_coeff : a = (q.totient : ℂ)⁻¹ •
+        ∑ χ : DirichletCharacter ℂ q, fun n : ℕ ↦ χ n * vonMangoldt n := by
+      ext n; simp [a, residueClass_apply]
+    have h_val : F z / z = (q.totient : ℂ)⁻¹ * ∑ χ : DirichletCharacter ℂ q,
+        ((if χ = 1 then 1 else 0) / (1 + z - 1) - logDeriv (entireL χ) (1 + z)) := by
+      simp [F, ite_div]
+      field_simp [ne_zero_of_re_pos hz]
+    rw [h_coeff, h_val]
+    exact (LSeriesHasSum.sum fun χ _ ↦ LSeriesHasSum_mul_vonMangoldt χ (by simpa using hz)).smul _
+  -- For `‖z‖ ≤ 1 / X` each `z * logDeriv (entireL χ)` has norm at most `1`, so `‖F z‖ ≤ 2`.
   have h_disc {z : ℂ} (hz : ‖z‖ ≤ X⁻¹) (χ : DirichletCharacter ℂ q) :
       entireL χ (1 + z) ≠ 0 ∧ ‖logDeriv (entireL χ) (1 + z)‖ ≤ X :=
     h_free k hk χ (1 + z) hq (by simpa)
-  have hF (z : ℂ) (hz : ‖z‖ ≤ X⁻¹) : ‖F z‖ ≤ 2 := norm_one_sub_mul_sum_div_totient_le fun χ ↦ by
-    grw [norm_mul, hz, (h_disc hz χ).2, inv_mul_cancel₀ hX.ne']
+  have hF {z : ℂ} (hz : ‖z‖ ≤ X⁻¹) : ‖F z‖ ≤ 2 := by
+    have h_sum : ∑ χ : DirichletCharacter ℂ q, ‖z * logDeriv (entireL χ) (1 + z)‖ ≤ q.totient := by
+      grw [sum_le_card_nsmul _ _ 1 fun χ _ ↦ ?_]
+      · simp [← card_eq_totient_of_hasEnoughRootsOfUnity ℂ]
+      · grw [norm_mul, hz, (h_disc hz χ).2, inv_mul_cancel₀ hX.ne']
+    rw [norm_div, Complex.norm_natCast, div_le_iff₀ (by linarith), mul_sum]
+    grw [norm_sub_le, norm_sum_le, norm_one]
+    linarith
   by_contra h_none
   let P (z : ℂ) : ℂ := ∑ n ∈ .range ⌈U.exp⌉₊, term a (1 + z) n
   let G (z : ℂ) : ℂ := (F z - z * P z) / (2 - U * z - 4⁻¹ * X * (1 + X * z) ^ 2).exp
-  -- A bound on the circle bounds `G 0`, which is too large.
+  -- A bound on the circle bounds `G 0` by Cauchy's estimate, which is too large.
   suffices h_circle : ∀ z : ℂ, ‖z‖ = X⁻¹ → ‖G z‖ ≤ 3 * U by
-    have hG : AnalyticOnNhd ℂ G (Metric.closedBall 0 X⁻¹) := fun s hs ↦
-      (analyticOnNhd_sub_mul_sum_term q ⌈U.exp⌉₊ (fun z hz χ ↦ (h_disc hz χ).1) s hs).div
-        (by fun_prop) (Complex.exp_ne_zero _)
+    have h_term (n : ℕ) (w : ℂ) : DifferentiableAt ℂ (term a · n) w :=
+      (hasDerivAt_term a n w).differentiableAt
+    have hG : DiffContOnCl ℂ G (Metric.ball 0 X⁻¹) :=
+      DifferentiableOn.diffContOnCl_ball (fun s hs ↦ by
+        have hs_ne (χ : DirichletCharacter ℂ q) : entireL χ (1 + s) ≠ 0 :=
+          (h_disc (by simpa using hs) χ).1
+        exact DifferentiableAt.differentiableWithinAt (by fun_prop (disch := simp_all) [logDeriv]))
+        le_rfl
     have h_zero : ‖G 0‖ ≤ 3 * U := by
-      simpa using norm_iteratedDeriv_le_of_forall_mem_sphere_norm_le 0 (inv_pos.2 hX)
-        (hG.differentiableOn.diffContOnCl_ball le_rfl) (by simpa using h_circle)
+      simpa using norm_iteratedDeriv_le_of_forall_mem_sphere_norm_le 0 (inv_pos.2 hX) hG
+        (by simpa using h_circle)
     have h_value : ‖G 0‖ = rexp (4⁻¹ * X) / rexp 2 / q.totient := by
       simp [G, F, norm_exp, Real.exp_sub, field]
     have h_large : 3 * U < rexp (4⁻¹ * X) / rexp 2 / q.totient := by
-      rw [lt_div_iff₀ (mod_cast Nat.totient_pos.2 (NeZero.pos q)), lt_div_iff₀ (exp_pos 2)]
+      rw [lt_div_iff₀ (by linarith), lt_div_iff₀ (exp_pos 2)]
       calc
         3 * U * q.totient * rexp 2 ≤ 3 * X ^ (2 * A) * X ^ (2 * A) * rexp 2 := by
           grw [Nat.totient_le, hq_cast, hU]
@@ -446,13 +273,106 @@ theorem New.exists_prime_modEq_one_log_mem (M A : ℕ) [NeZero M] (hM : 4 ∣ M)
         _ < rexp (4⁻¹ * X) := (lt_div_iff₀ (by positivity)).1 h_exp
     linarith
   intro z hz
-  rw [norm_div, norm_exp, div_le_iff₀' (by bound)]
-  refine norm_sub_mul_sum_term_le (residueClass_nonneg _) h_series hF hC hXC hX200 hWU
-    (fun n hn ↦ ?_) hz
-  -- In the window no `n ≡ 1` is prime, so `Λ` on the class is at most `Λ` on the non-primes.
-  by_cases h_prime : n.Prime
-  · have h_class : (n : ZMod q) ≠ 1 := fun h ↦ h_none ⟨n, h_prime, h, hn⟩
-    simp [residueClass, h_class]
-  · simpa [b, h_prime, abs_of_nonneg, residueClass_nonneg] using residueClass_le (1 : ZMod q) n
+  rw [norm_div, norm_exp, div_le_iff₀' (by positivity)]
+  have hz_small : ‖z‖ ≤ 200⁻¹ := hz.trans_le (inv_anti₀ (by positivity) hX200)
+  set E : ℝ := (2 - U * z - 4⁻¹ * X * (1 + X * z) ^ 2 : ℂ).re
+  -- On `‖z‖ = 1 / X` the Gaussian term shifts `U` to `U + t` with `t ∈ [0, X ^ 2]`.
+  set t : ℝ := X ^ 2 / 2 * (1 + X * z.re)
+  obtain ⟨hz_lo, hz_hi⟩ : -1 ≤ X * z.re ∧ X * z.re ≤ 1 := by
+    rw [← abs_le, abs_mul, abs_of_pos hX]
+    grw [z.abs_re_le_norm, hz, mul_inv_cancel₀ hX.ne']
+  have ht_nonneg : 0 ≤ t := mul_nonneg (by positivity) (by linarith)
+  have ht_le : t ≤ X ^ 2 := calc
+    t ≤ X ^ 2 / 2 * 2 := mul_le_mul_of_nonneg_left (by linarith) (by positivity)
+    _ = X ^ 2 := by ring
+  have hE : E = 2 - (U + t) * z.re := by
+    have h_im : X ^ 2 * z.im ^ 2 = 1 - (X * z.re) ^ 2 := by
+      rw [← z.sq_norm_sub_sq_re, hz]; field_simp
+    have h_re : E = 2 - U * z.re - X / 4 * ((1 + X * z.re) ^ 2 - X ^ 2 * z.im ^ 2) := by
+      simp [E, sq]; ring
+    linear_combination h_re + X / 4 * h_im
+  -- At `1 + 1 / U` the nonnegative Dirichlet series of `a` has sum at most `2 U`.
+  have h_norm : HasSum (fun n : ℕ ↦ ‖term a (1 + (U⁻¹ : ℝ)) n‖) (F (U⁻¹ : ℝ) / (U⁻¹ : ℝ)).re := by
+    have hc : HasSum (fun n : ℕ ↦ (‖term a (1 + (U⁻¹ : ℝ)) n‖ : ℂ)) (F (U⁻¹ : ℝ) / (U⁻¹ : ℝ)) :=
+      (h_series _ (by simpa using hU_pos)).congr_fun fun n ↦ by
+        have ha : 0 ≤ a n := Complex.zero_le_real.2 (residueClass_nonneg (1 : ZMod q) n)
+        have hterm : 0 ≤ term a (1 + (U⁻¹ : ℝ)) n := by
+          simpa only [Complex.ofReal_add, Complex.ofReal_one] using term_nonneg ha (1 + U⁻¹)
+        exact norm_of_nonneg' hterm
+    simpa using hasSum_re hc
+  have h_total : (F (U⁻¹ : ℝ) / (U⁻¹ : ℝ)).re ≤ 2 * U := by
+    have h_abs : ‖((U⁻¹ : ℝ) : ℂ)‖ = U⁻¹ := by simp [hU_pos.le]
+    grw [re_le_norm, norm_div, hF (h_abs.trans_le (inv_anti₀ hX hXU)), h_abs, div_inv_eq_mul]
+  have h_unit : U * U⁻¹ = 1 := mul_inv_cancel₀ hU_pos.ne'
+  have h_shift : t * U⁻¹ ≤ 1 := (div_le_one hU_pos).2 (ht_le.trans hWU)
+  rcases le_total z.re U⁻¹ with h_left | h_right
+  · -- If `re z ≤ 1 / U`, then `E ≥ 0`, and we bound `F` and the finite sum `P` separately.
+    have hU_re : U * z.re ≤ 1 := (mul_le_mul_of_nonneg_left h_left hU_pos.le).trans_eq h_unit
+    have ht_re : t * z.re ≤ 1 := (mul_le_mul_of_nonneg_left h_left ht_nonneg).trans h_shift
+    have hP : ‖P z‖ ≤ rexp E * (2 * U) := by
+      have h_le (n : ℕ) (hn : n ∈ Finset.range ⌈U.exp⌉₊) :
+          ‖term a (1 + z) n‖ ≤ rexp E * ‖term a (1 + (U⁻¹ : ℝ)) n‖ := by
+        have h_log : Real.log n ≤ U := by
+          obtain rfl | hn_pos := n.eq_zero_or_pos
+          · simpa using hU_pos.le
+          · exact ((log_lt_iff_lt_exp (mod_cast hn_pos)).2 (Nat.lt_ceil.1 (mem_range.1 hn))).le
+        exact norm_term_le_exp_mul a U⁻¹ E
+          (by linarith [mul_le_mul_of_nonneg_right h_log (sub_nonneg.2 h_left)])
+      calc
+        ‖P z‖ ≤ ∑ n ∈ .range ⌈U.exp⌉₊, rexp E * ‖term a (1 + (U⁻¹ : ℝ)) n‖ :=
+          (norm_sum_le _ _).trans (Finset.sum_le_sum h_le)
+        _ = rexp E * ∑ n ∈ .range ⌈U.exp⌉₊, ‖term a (1 + (U⁻¹ : ℝ)) n‖ := (mul_sum ..).symm
+        _ ≤ rexp E * (2 * U) := by
+          gcongr
+          exact (sum_le_hasSum _ (fun _ _ ↦ norm_nonneg _) h_norm).trans h_total
+    calc
+      ‖F z - z * P z‖ ≤ 2 + 200⁻¹ * (rexp E * (2 * U)) := by
+        grw [norm_sub_le, norm_mul, hF hz.le, hz_small, hP]
+      _ ≤ rexp E * (3 * U) := by nlinarith only [E.one_le_exp (show 0 ≤ E by linarith), hWU, hX200]
+  · -- If `re z ≥ 1 / U`, then `F z - z P z` is `z` times the tail `n ≥ e ^ U` of the series.
+    have h_pos : 0 < z.re := (inv_pos.2 hU_pos).trans_le h_right
+    have hP_sum : HasSum (fun n : ℕ ↦ if n < ⌈U.exp⌉₊ then term a (1 + z) n else 0) (P z) := by
+      have h_eq :
+          (∑ n ∈ Finset.range ⌈U.exp⌉₊, if n < ⌈U.exp⌉₊ then term a (1 + z) n else 0) =
+            P z :=
+        Finset.sum_congr rfl fun _ hn ↦ by simp [Finset.mem_range.mp hn]
+      rw [← h_eq]
+      refine hasSum_sum_of_ne_finset_zero (s := .range ⌈U.exp⌉₊) fun n hn ↦ ?_
+      have h : ¬n < ⌈U.exp⌉₊ := fun hn' ↦ hn (Finset.mem_range.mpr hn')
+      simp [h]
+    have h_full : HasSum (fun n : ℕ ↦ term a (1 + z) n) (F z / z) := h_series z h_pos
+    have h_tail_sum : HasSum (fun n : ℕ ↦ if n < ⌈U.exp⌉₊ then 0 else term a (1 + z) n)
+        (F z / z - P z) :=
+      (h_full.sub hP_sum).congr_fun fun n ↦ by split_ifs <;> simp
+    have h_tail : ‖F z / z - P z‖ ≤ rexp E * (3 * U) := by
+      refine (h_tail_sum.norm_le_of_bounded ((h_norm.add hC).mul_left (rexp E)) fun n ↦ ?_).trans
+        (by gcongr; linarith)
+      split_ifs with hn
+      · simp; positivity
+      · have hn_ge : U.exp ≤ n := Nat.ceil_le.1 (not_lt.1 hn)
+        have h_log : U ≤ Real.log n := (le_log_iff_exp_le (U.exp_pos.trans_le hn_ge)).2 hn_ge
+        rcases le_total (Real.log n) (U + X ^ 2) with h_in | h_out
+        · -- In the window no `n ≡ 1` is prime, so compare with `b` at `3 / 4`.
+          have hab : ‖a n‖ ≤ ‖b n‖ := by
+            by_cases hp : n.Prime
+            · have h_ne : (n : ZMod q) ≠ 1 := fun h ↦ h_none ⟨n, hp, h, h_log, h_in⟩
+              simp [a, residueClass, h_ne]
+            · simpa [a, b, hp, abs_of_nonneg, residueClass_nonneg] using
+                residueClass_le (1 : ZMod q) n
+          have ht_re : t * z.re ≤ U * 200⁻¹ :=
+            mul_le_mul (ht_le.trans hWU) (z.re_le_norm.trans hz_small) h_pos.le hU_pos.le
+          have h_exp_le : Real.log n * (-4⁻¹ - z.re) ≤ E := by
+            linarith [mul_le_mul_of_nonpos_right h_log (show -4⁻¹ - z.re ≤ 0 by linarith)]
+          exact (norm_term_le _ hab).trans
+            ((norm_term_le_exp_mul b (-4⁻¹) E h_exp_le).trans (by gcongr; simp))
+        · -- Beyond the window we have `log n ≥ U + X² ≥ U + t`.
+          have h_exp_le : Real.log n * (U⁻¹ - z.re) ≤ E := by
+            linarith [mul_le_mul_of_nonpos_right (show U + t ≤ Real.log n by linarith)
+              (sub_nonpos.2 h_right)]
+          exact (norm_term_le_exp_mul a U⁻¹ E h_exp_le).trans (by gcongr; simp)
+    calc
+      ‖F z - z * P z‖ = ‖z * (F z / z - P z)‖ := by
+        rw [mul_sub, mul_div_cancel₀ _ (ne_zero_of_re_pos h_pos)]
+      _ ≤ rexp E * (3 * U) := by grw [norm_mul, h_tail, show ‖z‖ ≤ 1 by linarith, one_mul]
 
 end AuxiliaryPrimes

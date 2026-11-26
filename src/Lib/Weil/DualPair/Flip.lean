@@ -112,8 +112,10 @@ def flipCoords : CoordChange E (.id ℂ) (homSigns t s) (homSigns s t') where
       mul_comm, starCoordEquiv, sum_prod_type]
   finEquiv_mem x := by
     -- Both the unit `c` and conjugation preserve `Ô E`.
-    erw [Submodule.smul_mem_iff' _ c]
-    simp [intVectors, stdLattice]
+    have hc_mem (y : 𝔸f E) : (c : 𝔸f E) * y ∈ Ô E ↔ y ∈ Ô E :=
+      ⟨fun h ↦ by simpa [← mul_assoc, ← Subring.coe_mul] using (Ô E).mul_mem c⁻¹.1.2 h,
+        (Ô E).mul_mem c.1.2⟩
+    simp [mem_stdLattice, starCoordEquiv, hc_mem]
     grind [star_star, star_mem_Ô]
 
 /-- For a unit `c` of `Ô E` with c̄c = −1 and signs `t' = -t`, the map `φ` of the change of
@@ -507,7 +509,11 @@ lemma Modulus.exists_modKernel_flip (c : (Ô E)ˣ) (hc : star (c : 𝔸f E) * c 
       z * C * modKernel V S a b 𝔪 (Pi.single v 1) P (.neg g) h =
         modKernel S T (b⁻¹ * upsilonU1 ^ card n) (a⁻¹ * upsilonU1 ^ card m) 𝔪
           (fun ρ ↦ ψ (ρ * v).trace) (flipPoly t s P) h (g * (1, 𝔪.flipScalar m)) := by
-    obtain ⟨v, rfl⟩ := 𝔪.reduction_surjective.comp_left.comp_left v
+    obtain ⟨v, rfl⟩ : ∃ v₀ : Matrix n m (Ô E), v₀.map 𝔪.reduction = v :=
+      ⟨_, (𝔪.reduction_surjective.comp_left.comp_left v).choose_spec⟩
+    have h_ind : Pi.single (v.map 𝔪.reduction) (1 : ℂ) ∘ vecToMatrix =
+        Pi.single (𝔪.reduction ∘ matrixToVec v) 1 :=
+      Pi.single_comp_equiv (Equiv.curry n m 𝔪.ResidueRing) (v.map 𝔪.reduction) 1
     have h_mat : (g * (1, 𝔪.flipScalar m)).adeleMatrix = l.adeleMatrix *
       (G.neg g * (1, u)).adeleMatrix := by
       -- `-map_mul` keeps the image of a product whole, in the form that `grind` matches.
@@ -518,15 +524,13 @@ lemma Modulus.exists_modKernel_flip (c : (Ô E)ˣ) (hc : star (c : 𝔸f E) * c 
       _ = z * pairTheta V S a b
             (integrated _ (Fock.polyVector _ P) (𝔪.vacTranslate (V.hom S) (matrixToVec v)))
             (G.neg g * (1, u), h) := by
-        -- `erw`, `rfl`: `modKernel` and `modDatum` unfold, and `pairTheta` is linear in the datum,
-        -- only up to definitional unfolding.
-        erw [modKernel, modDatum, Pi.single_comp_equiv (.curry ..), mul_assoc, ← smul_eq_mul C,
-          ← map_smul, ← map_smul, ← map_smul, ← hC, ← pairWeil_integrated_fin, ← pairTheta,
-          ← pairTheta_mul, Prod.mk_mul_mk, mul_one h]
-        rfl
+        rw [modKernel, modDatum, h_ind]
+        nth_rw 1 [pairTheta]
+        rw [mul_assoc, ← smul_eq_mul C, ← map_smul, ← map_smul, ← map_smul, ← hC,
+          ← pairWeil_integrated_fin, ← pairTheta, ← pairTheta_mul, Prod.mk_mul_mk,
+          Prod.mk_one_one, mul_one h]
       _ = _ := by
-        -- `erw`, `rfl`: the flipped datum matches `pairTheta` and `modKernel` only after unfolding.
-        erw [← h_flip _ _ _ _ _ h_mat, map_integrated, realMap_flipCoords_polyVector,
+        rw [← h_flip _ _ _ _ _ h_mat, map_integrated, realMap_flipCoords_polyVector,
           𝔪.flipCoords_map_vacTranslate S T hc_neg V v]
         rfl
   -- Expand `D` in indicators of classes; both kernels are linear in their datum.

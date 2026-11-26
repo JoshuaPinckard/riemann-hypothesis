@@ -454,10 +454,11 @@ lemma gal_smul_letterProj (x : L.Ambient) :
 lemma phi_pow_smul_letterTeich :
     φ ^ l • (k.letterTeich i⁻¹).val = k.letterTeich ((k.letterFrob ^ l) i)⁻¹ := by
   -- `φ ^ l` raises the Teichmüller lift `letterTeich i⁻¹` to the power `p ^ l`, as `letterFrob ^ l`
-  -- does with `i`. We use `erw`, as `frobEnd` is `x ↦ x ^ p` only up to unfolding.
-  erw [phi_pow_smul, k.letterFrob.coe_pow, pow_iterate, map_pow, k.S.coe_pow, Subtype.coe_mk,
-    map_teichmuller]
-  simp
+  -- does with `i`.
+  have h_teich (j : Letter) : (k.letterTeich j : Ainf) =
+      teichmuller p (algebraMap (flatFq k.f) OFlat j.val) := map_teichmuller p _ j.val
+  have h_frob : ⇑k.letterFrob = (· ^ p) := funext fun j ↦ Units.ext (frobenius_def ..)
+  simp [phi_pow_smul, h_teich, k.letterFrob.coe_pow, h_frob, pow_iterate, ← inv_pow]
 
 /-- The projector to the letter i takes values in the part at the letter i. -/
 lemma letterProj_mem_letterPart : L.letterProj i x ∈ letterPart i := by
@@ -612,10 +613,12 @@ lemma letterProj_mk_mem_ainfLattice (t : Rep.of (overZp L.ρ)) :
 lemma comp_letterProj_mem_forms (h : μ ∈ L.forms) : μ ∘ₗ L.letterProj i ∈ L.forms := by
   intro t g
   -- `μ` commutes with `g` on `fracSpan`, and `g` commutes with `letterProj i`
-  -- Elaborator: `erw`, as the goal carries `letterProj i` with its scalars restricted to A_inf.
-  erw [← form_gal_smul ⟨_, g, rfl⟩ h (mem_saturateBy_of_mem (letterProj_mk_mem_ainfLattice t)),
-    gal_smul_letterProj]
-  simp
+  let g' : k.galMonoid := ⟨inr g.val, g, rfl⟩
+  have h_rhs : g' • μ (L.letterProj i (.mk 1 t)) = toGp g.val • μ (L.letterProj i (.mk 1 t)) := rfl
+  have h_comm :=
+    form_gal_smul g' h (mem_saturateBy_of_mem (L.letterProj_mk_mem_ainfLattice (i := i) t))
+  rw [k.galMonoid.smul_def, gal_smul_letterProj, h_rhs] at h_comm
+  simpa [g'] using h_comm
 
 lemma valueAt_comp_wittMap {μ : L'.Ambient →ₗ[Ainf] BdR} :
     valueAt a (μ ∘ₗ F.wittMap) x = valueAt a μ (F.wittMap x) := by simp [valueAt]
@@ -644,8 +647,8 @@ lemma sum_letterProj (x : L.Ambient) : ∑ i : Letter, L.letterProj i x = x := b
   -- After exchanging the two sums only the term `n = 0` survives, and it equals `q • x`.
   rw [sum_comm, sum_eq_single 0 (fun n hn hn₀ ↦ ?_) (by simp)]
   · simp
-  · -- Elaborator: `erw`, as the scalar `0` of `S` acts here through A_inf only up to unfolding.
-    erw [← sum_smul, h_orth n hn hn₀, zero_smul]
+  · simpa [smul_eq_val_smul, ← sum_smul] using
+      congrArg (fun s : k.S ↦ s.val • (L.mulZeta.wittMap ^ n) x) (h_orth n hn hn₀)
 
 /-! ### Functionals of given type and Hodge–Tate jumps -/
 
@@ -683,13 +686,16 @@ lemma exists_span_formsOfType_mod_pred (i : Letter) (u : ℤ) :
   have f_gal (μ : L.formsOfType i u) (t : Rep.of (overZp L.ρ)) (g : k.subgroup) :
       f μ (L.ρ g t) = (χ g ^ (-u)).1 • toGp g • f μ t :=
     theta_a <| by
-      erw [comp_letterProj_mem_forms μ.property.1, ← ha, smul_distrib_smul, smul_tUnit_zpow,
-        smul_comm, ← smul_assoc]
+      have h_comm : μ.1 (L.letterProj i (.mk 1 (L.ρ g t))) =
+          toGp g.val • μ.1 (L.letterProj i (.mk 1 t)) := comp_letterProj_mem_forms μ.property.1 t g
+      rw [h_comm, ← ha, smul_distrib_smul, smul_tUnit_zpow, smul_comm, ← smul_assoc]
   have f_ζ (μ : L.formsOfType i u) (t : Rep.of (overZp L.ρ)) :
       f μ (O.ζ.1 • t) = theta (k.letterTeich i) * f μ t :=
-    theta_a (by
-      erw [← mulZeta.wittMap_letterProj (.mk 1 t),
-        mem_letterPart_iff_mulZeta.1 letterProj_mem_letterPart, μ.1.map_smul, ← ha, ← smul_assoc])
+    theta_a <| by
+      have h_mk : DiagTensor.mk 1 (O.ζ.1 • t) = L.mulZeta.wittMap (.mk 1 t) := rfl
+      rw [h_mk, ← mulZeta.wittMap_letterProj,
+        mem_letterPart_iff_mulZeta.1 letterProj_mem_letterPart, smul_eq_val_smul, μ.1.map_smul,
+        ← ha, ← smul_assoc]
   -- A basis `b` of the span of the symbols, made of symbols `b m = f (ν m)`.
   obtain ⟨b, hb, span_b, b_indep⟩ := exists_fun_fin_finrank_span_eq ℂ_[p] (.range f)
   choose ν hν using hb

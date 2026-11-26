@@ -716,23 +716,29 @@ lemma baseChangeOf.ext {A R : CommRingCat} {s : X ⟶ reprBy R} {φ : R ⟶ A} {
   exact Subtype.ext
     (Prod.ext h_pt (ULift.down_injective (CommRingCat.hom_ext (RingHom.ext h_hom))))
 
-set_option backward.isDefEq.respectTransparency false
-
 /-- For s: X → Y, the base change functor from functors over Y to functors over X, sending E → Y
 to X ×_Y E → X. -/
 def pullbackOver : Over Y ⥤ Over X where
   obj Z := Over.mk (fibreProd.fst s Z.hom)
-  map f :=
-    homMk
-      { app B := ↾fun x ↦ ⟨(x.1.1, f.left.app B x.1.2), congr(($f.w) B _) ▸ x.2⟩
-        naturality := by aesop_cat (add simp fibreProd) }
+  map {Z₁ Z₂} f := homMk
+    { app B := ↾fun x ↦ ⟨(x.1.1, f.left.app B x.1.2), congr(($f.w) B _) ▸ x.2⟩
+      naturality A B g := TypeCat.Hom.ext <| TypeCat.Fun.ext <| funext fun
+        (x : (fibreProd s Z₁.hom).obj A) ↦ Subtype.ext <| Prod.ext rfl <|
+          congrArg (fun k : Z₁.left.obj A ⟶ Z₂.left.obj B ↦ k.hom'.toFun x.1.2)
+            (f.left.naturality g) }
 
 instance : (pullbackOver s).IsRightAdjoint where
-  exists_leftAdjoint :=
-    ⟨_,
-      ⟨(mapPullbackAdj s).ofNatIsoRight
-        (NatIso.ofComponents (fun _ ↦ isoMk isPullback_fibreProd.isoPullback)
-          fun f ↦ OverMorphism.ext (by cat_disch)).symm⟩⟩
+  exists_leftAdjoint := ⟨_, ⟨(mapPullbackAdj s).ofNatIsoRight (NatIso.ofComponents
+    (fun _ ↦ isoMk isPullback_fibreProd.isoPullback isPullback_fibreProd.isoPullback_hom_snd)
+    fun {Z₁ Z₂} f ↦ OverMorphism.ext <| by
+      let g : fibreProd s Z₁.hom ⟶ fibreProd s Z₂.hom := ((pullbackOver s).map f).left
+      change g ≫ isPullback_fibreProd.isoPullback.hom = isPullback_fibreProd.isoPullback.hom ≫
+        pullback.lift (pullback.fst Z₁.hom s ≫ f.left) (pullback.snd Z₁.hom s) _
+      exact pullback.hom_ext
+        (by rw [Category.assoc, isPullback_fibreProd.isoPullback_hom_fst, Category.assoc,
+          pullback.lift_fst, isPullback_fibreProd.isoPullback_hom_fst_assoc]; rfl)
+        (by rw [Category.assoc, isPullback_fibreProd.isoPullback_hom_snd, Category.assoc,
+          pullback.lift_snd, isPullback_fibreProd.isoPullback_hom_snd]; rfl)).symm⟩⟩
 
 /-! ### Continuity and its first consequences -/
 
@@ -817,8 +823,10 @@ lemma IsCohomContinuous.isFilteredColimit_adjoin (h : IsCohomContinuous Λ X) (T
   -- the base changes of `X` form a system that is affine over `X`, and base change preserves
   -- limits: `h` applies once `T` is the colimit of the subalgebras, which is checked on sets
   refine isFilteredColimit_iff_bijective.mpr (allBijective_iff_forall_bijectiveUpTo.mpr (h
-    (isLimitOfPreserves _ (isLimitOfPreserves
-      ((opEquivOpUnder R).inverse ⋙ Over.post uliftCoyoneda ⋙ pullbackOver s) (IsColimit.op ?_)))
+    (isLimitOfPreserves _ (((Adjunction.ofIsRightAdjoint
+      (pullbackOver s)).rightAdjoint_preservesLimits.preservesLimitsOfShape.preservesLimit.preserves
+        (isLimitOfPreserves ((opEquivOpUnder R).inverse ⋙ Over.post uliftCoyoneda)
+          (IsColimit.op ?_))).some))
     fun _ ↦ .baseChange (.map uliftCoyoneda _) isPullback_fibreProd) n)
   refine
     ((reflectsColimit_of_reflectsIsomorphisms _
@@ -893,30 +901,29 @@ lemma IsCohomContinuous.of_hasCohomDenseImage {T : CommRingCat} {q : reprBy T �
       (continuousUpTo_locConstCoeff (fun j ↦ h_test (B.obj j)) _) fun m ↦ ?_
     · -- the limit map is a cover: `colimit B` represents the pull-back of the vertex `c.pt`, and
       -- the map from its envelope factors through `a.pt.hom`
-      let e' : reprBy (colimit B) ≅ ((pullbackOver q ⋙ Over.forget (reprBy T)).mapCone c).pt :=
-        (isLimitOfPreserves uliftCoyoneda (isColimit B).op).conePointsIsoOfNatIso
-          (isLimitOfPreserves (pullbackOver q ⋙ Over.forget (reprBy T))
-            (isLimitOfReflects (Over.forget Y) hc)) e
+      let e' := (isLimitOfPreserves uliftCoyoneda (isColimit B).op).conePointsIsoOfNatIso
+        (isLimitOfPreserves (pullbackOver q ⋙ Over.forget (reprBy T))
+          (isLimitOfReflects (Over.forget Y) hc)) e
       have h_fac :
           reprMap (θ.app (colimit B)) ≫ e'.hom ≫ ε.app c.pt = reprMap (post B E) ≫ a.pt.hom := by
         refine hc.hom_ext fun j ↦ ?_
         -- compare the projections to `D j`: both sides come down to `e` and `ε` at `j` after a map
         -- of rings `B j → E (colimit B)`, and the two ring maps agree by naturality of `θ`
-        simp only [e', Category.assoc]
+        refine (?_ : (uliftCoyoneda.map (θ.app (colimit B)).op ≫ e'.hom ≫ ε.app c.pt) ≫
+            ((Over.forget Y).mapCone c).π.app j = uliftCoyoneda.map (post B E).op ≫
+              uliftCoyoneda.map (colimit.ι (B ⋙ E) j.unop).op ≫ p.app j).trans
+          ((Category.assoc _ _ _).trans
+            (congrArg (reprMap (post B E) ≫ ·) (Arrow.w (a.π.app j)).symm)).symm
         have h_nat : ε.app c.pt ≫ ((Over.forget Y).mapCone c).π.app j =
             ((pullbackOver q ⋙ Over.forget (reprBy T)).mapCone c).π.app j ≫ ε.app (D.obj j) :=
           (ε.naturality (c.π.app j)).symm
-        rw [h_nat, IsLimit.conePointsIsoOfNatIso_hom_comp_assoc]
-        simp only [Functor.mapCone_π_app, Over.forget_map]
-        -- `erw`: `reprMap` and the maps of `a` match these lemmas only after unfolding definitions
-        erw [fac, ← map_comp_assoc, ← op_comp, θ.naturality, ← ι_post]
+        rw [Category.assoc, Category.assoc, h_nat, IsLimit.conePointsIsoOfNatIso_hom_comp_assoc]
+        simp only [Functor.mapCone_π_app, p, whiskerRight_app, NatTrans.comp_app,
+          Functor.whiskerLeft_app, NatTrans.op_app, Category.assoc, ← Functor.map_comp_assoc,
+          ← op_comp, ι_post, ← θ.naturality]
         rfl
-      have h_dense_colim :
-          HasCohomDenseImage Λ (reprMap (θ.app (colimit B)) ≫ e'.hom ≫ ε.app c.pt) :=
-        h_dense none e'
-      refine (h_dense_colim.mono ?_).isCohomEquiv
-      rw [h_fac, mapOnTests, whiskerLeft_comp]
-      apply range_comp_le
+      exact ((h_dense none e').mono ((congrArg (range ∘ mapOnTests) h_fac).trans_le <|
+        (congrArg range (testIncl.whiskerLeft_comp _ _)).trans_le (range_comp_le _ _))).isCohomEquiv
     · -- the induction hypothesis applies to the system of the fibre powers of the `p j`, over `Y`
       let toY : toArrowFunctor.obj (.mk p) ⋙ cechFunctor m ⟶ (const _).obj Y :=
         { app j := cech.proj (p.app j) m 0 } ≫ p ≫ { app j := (D.obj j).hom }
@@ -925,8 +932,9 @@ lemma IsCohomContinuous.of_hasCohomDenseImage {T : CommRingCat} {q : reprBy T �
         have := isCorepresentable_cech m
         refine evaluationJointlyReflectsLimits _ fun A ↦ ?_
         let v : (CommRingCat ⥤ Type 1) ⥤ Type 1 := (evaluation _ (Type 1)).obj A
-        exact isLimitOfPreserves (cech ..) (fstSndJointlyReflectLimit (c := v.mapArrow.mapCone a)
-          (isLimitOfPreserves (uliftCoyoneda ⋙ v) (isColimit _).op) (isLimitOfPreserves v hc))
+        exact isLimitOfPreserves (cech (D := Arrow (Type 1)) Arrow.leftToRight m)
+          (fstSndJointlyReflectLimit (c := v.mapArrow.mapCone a)
+            (isLimitOfPreserves (uliftCoyoneda ⋙ v) (isColimit _).op) (isLimitOfPreserves v hc))
       · -- the projections of the fibre powers are affine, by induction on `m`
         have h_pr (k : ℕ) : IsRelAffine (cech.proj (p.app j) k 0) := by
           induction k with

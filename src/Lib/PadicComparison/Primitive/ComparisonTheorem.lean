@@ -151,8 +151,6 @@ noncomputable def toGenericPoints [Algebra R OC]
         exact (mapGeneric_algebraMap ..).symm }
     (algPointsOf R R Y)
 
-set_option backward.isDefEq.respectTransparency false
-
 /-- Let `Ω` be a field in which `ℓ` is invertible and `D` a compared theory on tests over `Ω`
 (`New.Variety.ComparedTheory`). Then `D.IsFiniteLerayHirsch` (the classes `D.comparison` form a
 Leray–Hirsch basis and the total cohomology is finite) holds for `ℤ[X] = freeAb X` iff it holds for
@@ -174,8 +172,8 @@ lemma ComparedTheory.isFiniteLerayHirsch_freeAb_iff_relFreeAb {ℓ : ℕ} {Ω : 
       fun _ zar ↦ ?_).mp (h_zero _ (freeAb.hom_ext nofun))
     refine (zar (U := .whisker (Y := (offClosedFibre X).toFunctor) ⊥ _)
       fun _ y _ hm ↦ ?_).isCohomEquiv
-    refine (hm.ne_top (eq_top_mono ?_ y.prop)).elim
-    simp only [IdealFamily.ofMaximalIdeal, IsLocalRing.maximalIdeal_eq_bot, Ideal.map_bot, bot_le]
+    refine (hm.ne_top (eq_top_mono (Eq.trans_le ?_ bot_le) y.prop)).elim
+    exact (congrArg (Ideal.map _) IsLocalRing.maximalIdeal_eq_bot).trans Ideal.map_bot
   obtain ⟨w, h_exact⟩ := relFreeAb.shortExact (offClosedFibre X)
   exact h_ses ⟨_, _, w⟩ h_exact h_sub
 
@@ -258,7 +256,10 @@ lemma finite_and_primitive_comparison [IsAlgClosed Ω]
     NatIso.ofComponents
       (fun _ ↦ ((cancelBaseChange ..).symm ≪≫ₗ TensorProduct.comm ..).toModuleIso)
       fun _ ↦ ModuleCat.hom_ext (tmul_ext fun _ _ ↦ rfl)
-  let γ := isoWhiskerRight γ₀ (moduleCoeff (𝟭 _))
+  let γ :
+      moduleCoeff (asModules (TestOver.toTest Ω ⋙ testIncl ⋙ locConstAlg) ⋙ tensorWith OFlat M) ≅
+        TestOver.toTest Ω ⋙ oFlatLocConst ⋙ moduleCoeff (tensorCoeff M) :=
+    isoWhiskerRight γ₀ (moduleCoeff (𝟭 _))
   let b := Module.Free.chooseBasis (ZMod p) M
   let c : Comparison (TestOver.toTest Ω ⋙ oFlatLocConst ⋙ moduleCoeff (tensorCoeff M))
       (tilt ⋙ moduleCoeff (tensorCoeff M)) :=
@@ -300,11 +301,15 @@ lemma finite_and_primitive_comparison [IsAlgClosed Ω]
       ext i n x : 3
       refine (lerayHirsch_single ..).trans (.trans ?_ congr(mapThenComp _ _ $(hE i n x)).symm)
       -- unfold `mapThenComp`: restrict the composite along `genericTestOver Ω`, then compose
-      simp only [mapThenComp, AddMonoidHom.coe_comp, Function.comp_apply, AddMonoidHom.flip_apply]
-      rw [TotalH.map_comp_assoc, TotalH.map_comp_assoc]
-      simp_rw [map_homClass, ← homClass_comp]
+      let coeffHom : _ ⟶ D.functor := c.coeffHom
+      change _ = mapThenComp (restrictAlong (genericTestOver Ω)) (.homClass coeffHom) _
+      rw [mapThenComp, AddMonoidHom.coe_comp, Function.comp_apply, AddMonoidHom.flip_apply,
+        TotalH.map_comp_assoc, TotalH.map_comp_assoc, map_homClass, map_homClass,
+        ← homClass_comp, ← homClass_comp]
       rfl
     -- Pull-back along the isomorphism `u` is bijective, and so is `E`.
+    have : IsIso (freeAbMap u.hom) :=
+      (freeAb.mapIso u : freeAb X' ≅ c.functor ⋙ freeAb X).isIso_hom
     erw [← bijective_totalH_iff_isBijective,
       (IsCohomEquiv.of_isIso _).bijective_pullbackAlong.of_comp_iff',
       ← E.bijective.of_comp_iff]
